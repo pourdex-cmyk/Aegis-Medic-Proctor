@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -34,13 +34,9 @@ export async function middleware(request: NextRequest) {
     "/auth/sign-up",
     "/auth/forgot-password",
     "/auth/reset-password",
-    "/auth/invite",
     "/auth/callback",
+    "/invite",
     "/role-player",
-    "/solutions",
-    "/pricing",
-    "/security",
-    "/contact",
     "/api",
   ]
 

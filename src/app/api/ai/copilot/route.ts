@@ -68,19 +68,20 @@ export async function POST(req: NextRequest) {
       ? `${Math.floor(clockSeconds / 60)}:${String(clockSeconds % 60).padStart(2, "0")}`
       : "00:00"
 
+    const casualtyStatuses = `${casualtyContext}\n\nINTERVENTIONS:\n${interventionContext}`
+
     const { system, user: userPrompt } = buildInstructorCopilotPrompt({
       query,
-      scenario_title: scenarioTitle ?? "Unknown Scenario",
-      elapsed_time: timeDisplay,
-      casualty_context: casualtyContext,
-      intervention_history: interventionContext,
+      scenario_context: scenarioTitle ?? "Unknown Scenario",
+      elapsed_seconds: clockSeconds ?? 0,
+      casualty_statuses: casualtyStatuses,
     })
 
     const { text } = await generateText({
       model: anthropic("claude-haiku-4-5-20251001"),
       system,
       messages: [{ role: "user", content: userPrompt }],
-      maxTokens: 512,
+      maxOutputTokens: 512,
       temperature: 0.2,
     })
 
