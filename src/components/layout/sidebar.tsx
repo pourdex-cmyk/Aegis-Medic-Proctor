@@ -2,18 +2,18 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   LayoutDashboard, Target, Users, BookOpen, FileText, BarChart3,
   Building2, UserCog, ScrollText, Settings, ChevronLeft, ChevronRight,
-  Shield, LogOut, Bell, HelpCircle, Zap, Activity, Radio
+  Shield, LogOut, Activity
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { SimpleTooltip } from "@/components/ui/tooltip"
 import { Separator } from "@/components/ui/separator"
+import { createClient } from "@/lib/supabase/client"
 
 const mainNavItems = [
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "D" },
@@ -44,7 +44,15 @@ interface SidebarProps {
 
 export function Sidebar({ user, orgName, activeRunId }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/auth/sign-in")
+    router.refresh()
+  }
 
   return (
     <motion.aside
@@ -197,9 +205,9 @@ export function Sidebar({ user, orgName, activeRunId }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-[#1e2330] p-3">
+      <div className="border-t border-[#1e2330] p-3 space-y-1">
         {user && (
-          <div className={cn("flex items-center gap-2.5 rounded-lg p-2 hover:bg-[#0f1117] transition-colors cursor-pointer", collapsed && "justify-center")}>
+          <div className={cn("flex items-center gap-2.5 rounded-lg p-2", collapsed && "justify-center")}>
             <Avatar size="sm">
               {user.avatar_url && <AvatarImage src={user.avatar_url} />}
               <AvatarFallback>
@@ -222,6 +230,29 @@ export function Sidebar({ user, orgName, activeRunId }: SidebarProps) {
             </AnimatePresence>
           </div>
         )}
+        <SimpleTooltip content={collapsed ? "Sign Out" : undefined} side="right">
+          <button
+            onClick={handleSignOut}
+            className={cn(
+              "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-[#6b7594] hover:text-red-400 hover:bg-red-950/20 transition-all duration-150 cursor-pointer",
+              collapsed && "justify-center px-2"
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            <AnimatePresence mode="wait">
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.1 }}
+                >
+                  Sign Out
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </button>
+        </SimpleTooltip>
       </div>
 
       {/* Collapse toggle */}
