@@ -15,7 +15,7 @@ export default async function RunPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [{ data: scenarioRaw }, { data: casualtiesRaw }, { data: profile }] = await Promise.all([
+  const [{ data: scenarioRaw }, { data: casualtiesRaw }, { data: profile }, { data: member }] = await Promise.all([
     supabase
       .from("scenarios")
       .select("id, title, environment, complexity, doctrine_pack_id")
@@ -27,6 +27,7 @@ export default async function RunPage({ params }: Props) {
       .eq("scenario_id", id)
       .order("triage_category"),
     supabase.from("profiles").select("id, display_name").eq("id", user.id).single(),
+    supabase.from("organization_members").select("org_id").eq("user_id", user.id).eq("is_active", true).limit(1).single(),
   ])
 
   if (!scenarioRaw) notFound()
@@ -59,6 +60,7 @@ export default async function RunPage({ params }: Props) {
       activeRun={activeRunRaw as unknown as { id: string; status: string; clock_seconds: number; started_at?: string | null } | null}
       userId={user.id}
       userName={(profile as { display_name: string } | null)?.display_name ?? "Proctor"}
+      orgId={(member as { org_id: string } | null)?.org_id ?? ""}
     />
   )
 }

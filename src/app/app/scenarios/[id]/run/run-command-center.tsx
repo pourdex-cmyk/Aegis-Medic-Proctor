@@ -54,6 +54,7 @@ interface RunCommandCenterProps {
   activeRun: ScenarioRun | null
   userId: string
   userName: string
+  orgId: string
 }
 
 const TRIAGE_COLORS: Record<string, { border: string; bg: string; text: string }> = {
@@ -65,7 +66,7 @@ const TRIAGE_COLORS: Record<string, { border: string; bg: string; text: string }
 }
 
 export function RunCommandCenter({
-  scenario, casualties, activeRun, userId, userName,
+  scenario, casualties, activeRun, userId, userName, orgId,
 }: RunCommandCenterProps) {
   const supabase = createClient()
 
@@ -150,7 +151,7 @@ export function RunCommandCenter({
         .from("scenario_runs")
         .insert({
           scenario_id: scenario.id,
-          org_id: "placeholder",
+          org_id: orgId,
           lead_proctor_id: userId,
           status: "active",
           started_at: new Date().toISOString(),
