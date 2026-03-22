@@ -13,7 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .single()
 
   const isAdmin = ["org_admin", "super_admin"].includes(member?.role ?? "")
-  if (!isAdmin) redirect(ROUTES.DASHBOARD)
+  if (!isAdmin) redirect(ROUTES.dashboard)
 
   return <>{children}</>
 }

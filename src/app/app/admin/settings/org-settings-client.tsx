@@ -21,10 +21,10 @@ import { toast } from "sonner"
 interface Org {
   id: string
   name: string
-  org_type: string
+  type: string
   slug: string
-  plan_tier: string
-  max_members: number
+  plan_tier?: string
+  max_members?: number
   created_at: string
   settings: unknown
 }
@@ -150,7 +150,7 @@ export function OrgSettingsClient({ org, memberRole, userProfile }: OrgSettingsC
                     <div>
                       <Label>Organization Type</Label>
                       <div className="mt-1.5 px-3 py-2 rounded-lg border border-[#2d3347] bg-[#0d0f14] text-sm text-[#9daabf] capitalize">
-                        {ORG_TYPE_LABELS[org?.org_type ?? ""] ?? org?.org_type ?? "—"}
+                        {ORG_TYPE_LABELS[org?.type ?? ""] ?? org?.type ?? "—"}
                       </div>
                     </div>
                     {isAdmin && (

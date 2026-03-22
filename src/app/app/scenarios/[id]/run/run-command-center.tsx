@@ -24,6 +24,7 @@ import { cn, formatDuration, formatRelativeTime } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { TRIAGE_CATEGORIES, VITAL_RANGES } from "@/lib/constants"
 import { toast } from "sonner"
+import type { Json } from "@/lib/supabase/database.types"
 
 interface VitalSigns {
   hr: number; rr: number; sbp: number; dbp: number; spo2: number; temp: number; avpu: string
@@ -136,16 +137,16 @@ export function RunCommandCenter({
     if (!run?.id) return
     supabase
       .from("interventions")
-      .select("*")
+      .select("id, action_type, elapsed_seconds, created_at, casualty_id, raw_text, confidence_score")
       .eq("run_id", run.id)
       .order("elapsed_seconds", { ascending: false })
       .limit(50)
-      .then(({ data }) => { if (data) setInterventionLog(data) })
+      .then(({ data }) => { if (data) setInterventionLog(data as unknown as Intervention[]) })
   }, [run?.id, supabase])
 
   const handleStartRun = async () => {
     startTransition(async () => {
-      const { data, error } = await supabase
+      const { data: runData, error } = await supabase
         .from("scenario_runs")
         .insert({
           scenario_id: scenario.id,
@@ -154,17 +155,17 @@ export function RunCommandCenter({
           status: "active",
           started_at: new Date().toISOString(),
         })
-        .select()
+        .select("id, status, clock_seconds, started_at")
         .single()
 
-      if (error || !data) {
+      if (error || !runData) {
         toast.error("Failed to start run", { description: error?.message })
         return
       }
 
       // Add self as participant
       await supabase.from("run_participants").insert({
-        run_id: data.id,
+        run_id: runData.id,
         user_id: userId,
         role: "lead_proctor",
       })
@@ -172,9 +173,9 @@ export function RunCommandCenter({
       // Initialize casualty states
       await supabase.from("casualty_states").insert(
         casualties.map((c) => ({
-          run_id: data.id,
+          run_id: runData.id,
           casualty_id: c.id,
-          current_vitals: c.baseline_vitals,
+          current_vitals: c.baseline_vitals as unknown as Json,
           airway_status: c.airway_status,
           breathing_status: c.breathing_status,
           circulation_state: c.circulation_state,
@@ -183,7 +184,7 @@ export function RunCommandCenter({
         }))
       )
 
-      setRun(data)
+      setRun(runData as unknown as ScenarioRun)
       setIsRunning(true)
       setClockSeconds(0)
       toast.success("Run started", { description: `${userName} — ${new Date().toLocaleTimeString()}` })

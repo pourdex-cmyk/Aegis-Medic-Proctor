@@ -26,15 +26,14 @@ export default async function DoctrinePackPage({ params }: Props) {
       .single(),
     supabase
       .from("doctrine_documents")
-      .select("id, filename, file_type, status, chunk_count, created_at, processing_error")
+      .select("id, title, file_type, status, chunk_count, created_at")
       .eq("pack_id", id)
       .order("created_at", { ascending: false }),
     supabase
       .from("doctrine_rules")
-      .select("id, rule_text, category, confidence_score, is_approved, reviewed_at, source_chunk_id")
+      .select("id, title, description, category, approval_status, chunk_id, created_at")
       .eq("pack_id", id)
-      .order("is_approved", { ascending: true })
-      .order("confidence_score", { ascending: false }),
+      .order("approval_status", { ascending: true }),
     supabase
       .from("organization_members")
       .select("role")

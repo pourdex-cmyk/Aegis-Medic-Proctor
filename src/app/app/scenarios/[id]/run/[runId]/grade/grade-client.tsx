@@ -51,7 +51,7 @@ interface GradeClientProps {
     status: string
     clock_seconds: number
     started_at?: string | null
-    ended_at?: string | null
+    completed_at?: string | null
     lead_proctor_id: string
   }
   scenario: {
@@ -60,7 +60,7 @@ interface GradeClientProps {
     complexity: string
     audience: string
     casualty_count: number
-    objectives?: string[] | null
+    objectives?: unknown
   }
   rubric: Rubric | null
   interventions: Intervention[]
@@ -68,8 +68,7 @@ interface GradeClientProps {
     id: string
     percentage: number
     dimension_scores: unknown
-    raw_scores: unknown
-    notes?: string | null
+    evaluator_notes?: string | null
     created_at: string
   } | null
 }
@@ -112,6 +111,7 @@ function getScoreVariant(pct: number): "stable" | "warning" | "critical" | "seco
 }
 
 export function GradeClient({ run, scenario, rubric, interventions, existingScore }: GradeClientProps) {
+  const objectives = scenario.objectives as string[] | null | undefined
   const router = useRouter()
   const supabase = createClient()
   const [isPending, startTransition] = useTransition()
@@ -123,13 +123,13 @@ export function GradeClient({ run, scenario, rubric, interventions, existingScor
   // Score state: itemId → { points, note }
   const [scores, setScores] = useState<Record<string, ScoreEntry>>(() => {
     if (existingScore) {
-      const raw = existingScore.raw_scores as Record<string, { points: number; note: string }> | null
+      const raw = existingScore.dimension_scores as Record<string, { points: number; note: string }> | null
       return raw ?? {}
     }
     return Object.fromEntries(items.map((item) => [item.id, { points: 0, note: "" }]))
   })
 
-  const [globalNotes, setGlobalNotes] = useState(existingScore?.notes ?? "")
+  const [globalNotes, setGlobalNotes] = useState(existingScore?.evaluator_notes ?? "")
   const [activeTab, setActiveTab] = useState("rubric")
 
   // Calculated totals
@@ -175,12 +175,14 @@ export function GradeClient({ run, scenario, rubric, interventions, existingScor
 
       const { error } = await supabase.from("scores").upsert({
         run_id: run.id,
-        scenario_id: scenario.id,
+        rubric_id: rubric?.id ?? "default",
+        evaluator_id: run.lead_proctor_id,
+        total_score: totalEarned,
+        max_possible: totalMaxPoints,
         percentage: overallPct,
         dimension_scores: dimScores,
-        raw_scores: scores,
-        notes: globalNotes.trim() || null,
-        graded_at: new Date().toISOString(),
+        passed: overallPct >= 75,
+        evaluator_notes: globalNotes.trim() || null,
       })
 
       if (error) {
@@ -192,7 +194,7 @@ export function GradeClient({ run, scenario, rubric, interventions, existingScor
       if (finalize) {
         await supabase
           .from("scenario_runs")
-          .update({ status: "completed", ended_at: new Date().toISOString() })
+          .update({ status: "completed", completed_at: new Date().toISOString() })
           .eq("id", run.id)
       }
 
@@ -366,7 +368,7 @@ export function GradeClient({ run, scenario, rubric, interventions, existingScor
                   <Activity className="h-3.5 w-3.5 mr-1.5" />
                   Interventions ({interventions.length})
                 </TabsTrigger>
-                {scenario.objectives && scenario.objectives.length > 0 && (
+                {objectives && objectives.length > 0 && (
                   <TabsTrigger value="objectives">
                     <Target className="h-3.5 w-3.5 mr-1.5" />
                     Objectives
@@ -571,9 +573,9 @@ export function GradeClient({ run, scenario, rubric, interventions, existingScor
               </TabsContent>
 
               {/* Objectives tab */}
-              {scenario.objectives && scenario.objectives.length > 0 && (
+              {objectives && objectives.length > 0 && (
                 <TabsContent value="objectives" className="mt-4 space-y-2">
-                  {scenario.objectives.map((obj, i) => (
+                  {objectives!.map((obj, i) => (
                     <div key={i} className="flex items-start gap-3 rounded-lg border border-[#1e2330] px-4 py-3">
                       <Target className="h-3.5 w-3.5 text-cyan-400 shrink-0 mt-0.5" />
                       <p className="text-xs text-[#9daabf]">{obj}</p>

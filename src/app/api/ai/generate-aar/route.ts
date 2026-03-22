@@ -31,10 +31,10 @@ export async function POST(request: Request) {
     const { run_id } = await request.json()
 
     // Fetch run data
-    const [{ data: run }, { data: interventions }, { data: scores }] = await Promise.all([
+    const [{ data: runRaw }, { data: interventionsRaw }, { data: scoresRaw }] = await Promise.all([
       supabase
         .from("scenario_runs")
-        .select("*, scenarios(title, audience, doctrine_pack_id)")
+        .select("*, scenarios(title, audience, doctrine_pack_id, casualty_count)")
         .eq("id", run_id)
         .single(),
       supabase
@@ -48,9 +48,26 @@ export async function POST(request: Request) {
         .eq("run_id", run_id),
     ])
 
+    interface RunWithScenario {
+      id: string; org_id: string; status: string; clock_seconds: number; casualty_count: number; created_at: string;
+      scenarios: { title: string; audience: string; doctrine_pack_id: string | null; casualty_count: number }
+    }
+    interface InterventionWithCasualty {
+      id: string; action_type: string; elapsed_seconds: number; confidence_score: number;
+      casualty_profiles: { callsign: string } | null
+    }
+    interface ScoreWithRubric {
+      id: string; percentage: number; dimension_scores: unknown;
+      rubrics: { name: string } | null
+    }
+
+    const run = runRaw as unknown as RunWithScenario | null
+    const interventions = interventionsRaw as unknown as InterventionWithCasualty[] | null
+    const scores = scoresRaw as unknown as ScoreWithRubric[] | null
+
     if (!run) return NextResponse.json({ error: "Run not found" }, { status: 404 })
 
-    const scenario = run.scenarios as { title: string; audience: string; doctrine_pack_id: string | null }
+    const scenario = run.scenarios
     const overallScore = scores?.length
       ? scores.reduce((sum, s) => sum + s.percentage, 0) / scores.length
       : 0
@@ -79,7 +96,7 @@ export async function POST(request: Request) {
       interventions: (interventions ?? []).map((i) => ({
         action: i.action_type,
         elapsed: i.elapsed_seconds,
-        casualty: (i.casualty_profiles as { callsign: string } | null)?.callsign ?? "Unknown",
+        casualty: i.casualty_profiles?.callsign ?? "Unknown",
         correct: i.confidence_score > 0.7,
       })),
       missed_critical_actions: scores?.flatMap((s) => {

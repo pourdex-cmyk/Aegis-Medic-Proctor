@@ -20,7 +20,7 @@ export default async function DashboardPage() {
     { count: activeRuns },
     { data: recentAudit },
   ] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase.from("profiles").select("id, display_name, email, avatar_url, current_org_id, created_at, updated_at").eq("id", user.id).single(),
     supabase
       .from("organization_members")
       .select("*, organizations(name, type)")

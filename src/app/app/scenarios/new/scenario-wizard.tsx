@@ -9,7 +9,7 @@ import {
   MessageSquare, Shield, Zap, Brain, Loader2, Plus, Minus,
   Info, ArrowRight, CheckCircle2, Edit2
 } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { useForm, type UseFormSetValue } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -381,7 +381,7 @@ function StepHeader({ title, description }: { title: string; description: string
   )
 }
 
-function StepAudience({ values, setValue }: { values: WizardForm; setValue: (k: keyof WizardForm, v: unknown) => void }) {
+function StepAudience({ values, setValue }: { values: WizardForm; setValue: UseFormSetValue<WizardForm> }) {
   return (
     <StepSection>
       <StepHeader
@@ -396,7 +396,7 @@ function StepAudience({ values, setValue }: { values: WizardForm; setValue: (k: 
             <button
               key={opt.value}
               type="button"
-              onClick={() => setValue("audience", opt.value)}
+              onClick={() => setValue("audience", opt.value as "military" | "law_enforcement" | "ems")}
               className={cn(
                 "flex items-center gap-4 rounded-xl border p-4 text-left transition-all w-full",
                 values.audience === opt.value ? opt.activeColor : opt.color,
@@ -442,7 +442,7 @@ function StepAudience({ values, setValue }: { values: WizardForm; setValue: (k: 
   )
 }
 
-function StepEnvironment({ values, setValue }: { values: WizardForm; setValue: (k: keyof WizardForm, v: unknown) => void }) {
+function StepEnvironment({ values, setValue }: { values: WizardForm; setValue: UseFormSetValue<WizardForm> }) {
   return (
     <StepSection>
       <StepHeader
@@ -502,7 +502,7 @@ function StepEnvironment({ values, setValue }: { values: WizardForm; setValue: (
   )
 }
 
-function StepParameters({ values, setValue }: { values: WizardForm; setValue: (k: keyof WizardForm, v: unknown) => void }) {
+function StepParameters({ values, setValue }: { values: WizardForm; setValue: UseFormSetValue<WizardForm> }) {
   return (
     <StepSection>
       <StepHeader
@@ -621,7 +621,7 @@ function StepParameters({ values, setValue }: { values: WizardForm; setValue: (k
   )
 }
 
-function StepEmphasis({ values, setValue }: { values: WizardForm; setValue: (k: keyof WizardForm, v: unknown) => void }) {
+function StepEmphasis({ values, setValue }: { values: WizardForm; setValue: UseFormSetValue<WizardForm> }) {
   const emphasisFields = [
     { key: "hemorrhage_emphasis" as const, label: "Hemorrhage Control", icon: Droplets, color: "text-red-400" },
     { key: "airway_emphasis" as const, label: "Airway Management", icon: Wind, color: "text-blue-400" },
@@ -714,7 +714,7 @@ function StepDoctrine({
   values, setValue, doctrinePacks,
 }: {
   values: WizardForm
-  setValue: (k: keyof WizardForm, v: unknown) => void
+  setValue: UseFormSetValue<WizardForm>
   doctrinePacks: Array<{ id: string; name: string; audience: string; version: string }>
 }) {
   return (

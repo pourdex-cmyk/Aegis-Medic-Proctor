@@ -10,7 +10,7 @@ export default async function DoctrinePage() {
   const [{ data: packs }, { data: member }] = await Promise.all([
     supabase
       .from("doctrine_packs")
-      .select("*")
+      .select("id, name, version, audience, status, description, document_count, rule_count, approved_at, created_at, updated_at")
       .order("updated_at", { ascending: false }),
     supabase
       .from("organization_members")

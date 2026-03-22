@@ -32,7 +32,7 @@ interface Casualty {
 interface LiveState {
   casualty_id: string
   current_vitals: unknown
-  triage_override?: string | null
+  triage_category?: string
 }
 
 interface MascalBoardProps {
@@ -179,7 +179,7 @@ export function MascalBoard({ scenario, casualties, run, liveStates }: MascalBoa
   const [triageState, setTriageState] = useState<Record<string, TriageCategory>>(() =>
     Object.fromEntries(casualties.map((c) => {
       const live = liveStates.find((s) => s.casualty_id === c.id)
-      return [c.id, (live?.triage_override ?? c.triage_category) as TriageCategory]
+      return [c.id, (live?.triage_category ?? c.triage_category) as TriageCategory]
     }))
   )
   const [dragOverColumn, setDragOverColumn] = useState<TriageCategory | null>(null)
@@ -191,7 +191,7 @@ export function MascalBoard({ scenario, casualties, run, liveStates }: MascalBoa
     if (run?.id) {
       await supabase
         .from("casualty_states")
-        .update({ triage_override: category })
+        .update({ triage_category: category })
         .eq("run_id", run.id)
         .eq("casualty_id", casualtyId)
     }

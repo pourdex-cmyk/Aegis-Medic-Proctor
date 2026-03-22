@@ -27,22 +27,21 @@ import { toast } from "sonner"
 
 interface DoctrineDocument {
   id: string
-  filename: string
+  title: string
   file_type: string
   status: string
   chunk_count: number
   created_at: string
-  processing_error?: string | null
 }
 
 interface DoctrineRule {
   id: string
-  rule_text: string
+  title: string
+  description?: string | null
   category: string
-  confidence_score: number
-  is_approved: boolean
-  reviewed_at?: string | null
-  source_chunk_id?: string | null
+  approval_status: string
+  chunk_id?: string | null
+  created_at: string
 }
 
 interface Pack {
@@ -99,28 +98,29 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
   const [ruleFilter, setRuleFilter] = useState<"all" | "pending" | "approved" | "rejected">("all")
   const [localRules, setLocalRules] = useState<DoctrineRule[]>(rules)
 
-  const pendingRules = localRules.filter((r) => !r.is_approved && r.reviewed_at === null)
-  const approvedRules = localRules.filter((r) => r.is_approved)
-  const rejectedRules = localRules.filter((r) => !r.is_approved && r.reviewed_at !== null)
+  const pendingRules = localRules.filter((r) => r.approval_status === "pending")
+  const approvedRules = localRules.filter((r) => r.approval_status === "approved")
+  const rejectedRules = localRules.filter((r) => r.approval_status === "rejected")
 
   const approvalProgress = localRules.length > 0
     ? Math.round((approvedRules.length / localRules.length) * 100)
     : 0
 
   const filteredRules = localRules.filter((r) => {
-    const matchesSearch = !ruleSearch || r.rule_text.toLowerCase().includes(ruleSearch.toLowerCase())
+    const matchesSearch = !ruleSearch || r.title.toLowerCase().includes(ruleSearch.toLowerCase())
     const matchesFilter =
       ruleFilter === "all" ||
-      (ruleFilter === "pending" && !r.is_approved && !r.reviewed_at) ||
-      (ruleFilter === "approved" && r.is_approved) ||
-      (ruleFilter === "rejected" && !r.is_approved && !!r.reviewed_at)
+      (ruleFilter === "pending" && r.approval_status === "pending") ||
+      (ruleFilter === "approved" && r.approval_status === "approved") ||
+      (ruleFilter === "rejected" && r.approval_status === "rejected")
     return matchesSearch && matchesFilter
   })
 
   const handleApproveRule = async (ruleId: string, approved: boolean) => {
+    const newStatus = approved ? "approved" : "rejected"
     const { error } = await supabase
       .from("doctrine_rules")
-      .update({ is_approved: approved, reviewed_at: new Date().toISOString() })
+      .update({ approval_status: newStatus })
       .eq("id", ruleId)
 
     if (error) {
@@ -130,7 +130,7 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
     setLocalRules((prev) =>
       prev.map((r) =>
         r.id === ruleId
-          ? { ...r, is_approved: approved, reviewed_at: new Date().toISOString() }
+          ? { ...r, approval_status: newStatus }
           : r
       )
     )
@@ -142,7 +142,7 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
       const pendingIds = pendingRules.map((r) => r.id)
       const { error } = await supabase
         .from("doctrine_rules")
-        .update({ is_approved: true, reviewed_at: new Date().toISOString() })
+        .update({ approval_status: "approved" })
         .in("id", pendingIds)
 
       if (error) {
@@ -152,7 +152,7 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
       setLocalRules((prev) =>
         prev.map((r) =>
           pendingIds.includes(r.id)
-            ? { ...r, is_approved: true, reviewed_at: new Date().toISOString() }
+            ? { ...r, approval_status: "approved" }
             : r
         )
       )
@@ -363,9 +363,9 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
             ) : (
               <div className="space-y-2">
                 {filteredRules.map((rule, i) => {
-                  const isPending = !rule.is_approved && !rule.reviewed_at
-                  const isApproved = rule.is_approved
-                  const isRejected = !rule.is_approved && !!rule.reviewed_at
+                  const isPending = rule.approval_status === "pending"
+                  const isApproved = rule.approval_status === "approved"
+                  const isRejected = rule.approval_status === "rejected"
 
                   return (
                     <motion.div
@@ -386,9 +386,6 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
                               <Badge variant="secondary" size="sm" className={CATEGORY_COLORS[rule.category] ?? ""}>
                                 {rule.category?.replace(/_/g, " ") ?? "general"}
                               </Badge>
-                              <span className="text-[10px] text-[#3e465e]">
-                                Confidence: {Math.round(rule.confidence_score * 100)}%
-                              </span>
                               {isApproved && (
                                 <Badge variant="stable" size="sm">
                                   <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" />
@@ -399,7 +396,7 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
                                 <Badge variant="secondary" size="sm">Rejected</Badge>
                               )}
                             </div>
-                            <p className="text-sm text-[#d3dce8] leading-relaxed">{rule.rule_text}</p>
+                            <p className="text-sm text-[#d3dce8] leading-relaxed">{rule.title}{rule.description ? ` — ${rule.description}` : ""}</p>
                           </div>
 
                           {canApprove && isPending && (
@@ -454,7 +451,7 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
               <div className="space-y-2">
                 {documents.map((doc, i) => {
                   const status = DOC_STATUS_CONFIG[doc.status] ?? DOC_STATUS_CONFIG.pending
-                  const ext = doc.filename.split(".").pop()?.toLowerCase() ?? "txt"
+                  const ext = doc.file_type ?? "txt"
                   return (
                     <motion.div
                       key={doc.id}
@@ -465,7 +462,7 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
                       <div className="flex items-center gap-4 rounded-lg border border-[#1e2330] bg-[#0d0f14] px-4 py-3">
                         <span className="text-xl shrink-0">{FILE_TYPE_ICONS[ext] ?? "📄"}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-[#d3dce8] truncate">{doc.filename}</p>
+                          <p className="text-sm font-medium text-[#d3dce8] truncate">{doc.title}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <Badge variant={status.variant} size="sm">
                               {doc.status === "processing" && <Loader2 className="h-2.5 w-2.5 mr-0.5 animate-spin" />}
@@ -476,9 +473,6 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
                             )}
                             <span className="text-[10px] text-[#3e465e]">{formatRelativeTime(doc.created_at)}</span>
                           </div>
-                          {doc.processing_error && (
-                            <p className="text-[10px] text-red-400 mt-0.5 truncate">{doc.processing_error}</p>
-                          )}
                         </div>
                         {canApprove && (
                           <DropdownMenu>

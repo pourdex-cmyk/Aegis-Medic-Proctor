@@ -10,7 +10,7 @@ export default async function ScenariosPage() {
   const [{ data: scenarios }, { data: doctrinePacks }] = await Promise.all([
     supabase
       .from("scenarios")
-      .select("*")
+      .select("id, title, description, audience, environment, scenario_type, complexity, casualty_count, evac_delay_minutes, status, ai_generated, tags, created_at, updated_at, doctrine_pack_id")
       .order("updated_at", { ascending: false }),
     supabase
       .from("doctrine_packs")

@@ -39,12 +39,10 @@ interface Casualty {
 
 interface Inject {
   id: string
-  inject_type: string
   trigger_type: string
-  trigger_value?: string | null
+  trigger_time_seconds?: number | null
   title: string
   description?: string | null
-  elapsed_at_seconds?: number | null
 }
 
 interface ScenarioDetailProps {
@@ -61,7 +59,7 @@ interface ScenarioDetailProps {
     objectives?: string[] | null
     status: string
     created_at: string
-    doctrine_packs?: { name: string; version: string } | null
+    doctrine_pack_id?: string | null
   }
   casualties: Casualty[]
   injects: Inject[]
@@ -117,7 +115,7 @@ export function ScenarioDetail({ scenario, casualties, injects, recentRuns }: Sc
                 size="sm"
                 onClick={() => {
                   const activeRun = recentRuns.find((r) => r.status === "active")
-                  if (activeRun) router.push(`${ROUTES.SCENARIOS}/${scenario.id}/run`)
+                  if (activeRun) router.push(`${ROUTES.scenarios}/${scenario.id}/run`)
                 }}
               >
                 Rejoin Active Run
@@ -126,7 +124,7 @@ export function ScenarioDetail({ scenario, casualties, injects, recentRuns }: Sc
               <Button
                 leftIcon={<Play className="h-3.5 w-3.5" />}
                 size="sm"
-                onClick={() => router.push(`${ROUTES.SCENARIOS}/${scenario.id}/run`)}
+                onClick={() => router.push(`${ROUTES.scenarios}/${scenario.id}/run`)}
               >
                 Start Run
               </Button>
@@ -168,10 +166,10 @@ export function ScenarioDetail({ scenario, casualties, injects, recentRuns }: Sc
             {t2Count > 0 && <Badge variant="T2" dot>{t2Count} T2</Badge>}
             {t3Count > 0 && <Badge variant="T3" dot>{t3Count} T3</Badge>}
             {t4Count > 0 && <Badge variant="T4" dot>{t4Count} T4</Badge>}
-            {scenario.doctrine_packs && (
+            {scenario.doctrine_pack_id && (
               <Badge variant="secondary">
                 <BookOpen className="h-3 w-3 mr-1" />
-                {scenario.doctrine_packs.name} v{scenario.doctrine_packs.version}
+                Doctrine Pack
               </Badge>
             )}
           </div>
@@ -259,7 +257,7 @@ export function ScenarioDetail({ scenario, casualties, injects, recentRuns }: Sc
                 ) : (
                   <>
                     {visibleInjects.map((inject, i) => {
-                      const Icon = INJECT_ICONS[inject.inject_type] ?? Radio
+                      const Icon = Radio
                       return (
                         <motion.div
                           key={inject.id}
@@ -274,10 +272,10 @@ export function ScenarioDetail({ scenario, casualties, injects, recentRuns }: Sc
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-0.5">
                                 <p className="text-xs font-semibold text-[#d3dce8] truncate">{inject.title}</p>
-                                <Badge variant="secondary" size="sm">{inject.inject_type}</Badge>
-                                {inject.elapsed_at_seconds != null && (
+                                <Badge variant="secondary" size="sm">{inject.trigger_type}</Badge>
+                                {inject.trigger_time_seconds != null && (
                                   <span className="text-[10px] text-[#4a5370] font-mono ml-auto shrink-0">
-                                    T+{Math.floor(inject.elapsed_at_seconds / 60)}:{String(inject.elapsed_at_seconds % 60).padStart(2, "0")}
+                                    T+{Math.floor(inject.trigger_time_seconds / 60)}:{String(inject.trigger_time_seconds % 60).padStart(2, "0")}
                                   </span>
                                 )}
                               </div>
@@ -285,7 +283,7 @@ export function ScenarioDetail({ scenario, casualties, injects, recentRuns }: Sc
                                 <p className="text-[11px] text-[#6b7594] line-clamp-2">{inject.description}</p>
                               )}
                               <p className="text-[10px] text-[#3e465e] mt-1">
-                                Trigger: {inject.trigger_type}{inject.trigger_value ? ` — ${inject.trigger_value}` : ""}
+                                Trigger: {inject.trigger_type}
                               </p>
                             </div>
                           </div>
@@ -436,7 +434,7 @@ export function ScenarioDetail({ scenario, casualties, injects, recentRuns }: Sc
                       variant="ghost"
                       size="xs"
                       rightIcon={<ChevronRight className="h-3 w-3" />}
-                      onClick={() => router.push(ROUTES.ANALYTICS)}
+                      onClick={() => router.push(ROUTES.analytics)}
                       className="w-full justify-center"
                     >
                       View in Analytics

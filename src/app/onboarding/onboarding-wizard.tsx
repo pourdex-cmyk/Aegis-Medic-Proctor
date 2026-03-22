@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { cn, generateId } from "@/lib/utils"
 import { ROUTES, ORG_TYPES } from "@/lib/constants"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
@@ -155,13 +155,14 @@ export function OnboardingWizard({ userId, userEmail, displayName }: OnboardingW
             org_id: createdOrgId,
             email: email.trim(),
             role: "proctor",
+            token: generateId(),
             expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             invited_by: userId,
           })
         }
         toast.success(`${emails.length} invite${emails.length > 1 ? "s" : ""} sent`)
       }
-      router.push(ROUTES.DASHBOARD)
+      router.push(ROUTES.dashboard)
     })
   }
 
@@ -466,7 +467,7 @@ export function OnboardingWizard({ userId, userEmail, displayName }: OnboardingW
               <Button
                 size="lg"
                 className="w-full max-w-sm"
-                onClick={() => router.push(ROUTES.DASHBOARD)}
+                onClick={() => router.push(ROUTES.dashboard)}
                 rightIcon={<ArrowRight className="h-4 w-4" />}
               >
                 Go to Dashboard

@@ -68,7 +68,7 @@ export async function PATCH(
       resource_type: "organization_member",
       resource_id: memberId,
       description: `Member updated: ${Object.keys(updates).join(", ")}`,
-      metadata: { target_user: targetMember.user_id, changes: updates },
+      metadata: { target_user: targetMember.user_id, changes: updates as Record<string, string> },
     })
 
     return NextResponse.json({ member: updated })

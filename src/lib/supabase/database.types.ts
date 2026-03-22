@@ -27,6 +27,7 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["organizations"]["Insert"]>
+        Relationships: []
       }
       organization_members: {
         Row: {
@@ -48,6 +49,33 @@ export type Database = {
           joined_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["organization_members"]["Insert"]>
+        Relationships: []
+      }
+      organization_invites: {
+        Row: {
+          id: string
+          org_id: string
+          email: string
+          role: string
+          token: string
+          invited_by: string | null
+          accepted_at: string | null
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          email: string
+          role: string
+          token: string
+          invited_by?: string | null
+          accepted_at?: string | null
+          expires_at: string
+          created_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["organization_invites"]["Insert"]>
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -69,6 +97,7 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>
+        Relationships: []
       }
       doctrine_packs: {
         Row: {
@@ -104,6 +133,7 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["doctrine_packs"]["Insert"]>
+        Relationships: []
       }
       doctrine_documents: {
         Row: {
@@ -131,6 +161,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["doctrine_documents"]["Insert"]>
+        Relationships: []
       }
       doctrine_chunks: {
         Row: {
@@ -154,6 +185,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["doctrine_chunks"]["Insert"]>
+        Relationships: []
       }
       doctrine_rules: {
         Row: {
@@ -189,6 +221,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["doctrine_rules"]["Insert"]>
+        Relationships: []
       }
       scenarios: {
         Row: {
@@ -238,6 +271,7 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["scenarios"]["Insert"]>
+        Relationships: []
       }
       scenario_injects: {
         Row: {
@@ -265,6 +299,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["scenario_injects"]["Insert"]>
+        Relationships: []
       }
       casualty_profiles: {
         Row: {
@@ -326,6 +361,7 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["casualty_profiles"]["Insert"]>
+        Relationships: []
       }
       scenario_runs: {
         Row: {
@@ -357,6 +393,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["scenario_runs"]["Insert"]>
+        Relationships: []
       }
       casualty_states: {
         Row: {
@@ -394,6 +431,7 @@ export type Database = {
           updated_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["casualty_states"]["Insert"]>
+        Relationships: []
       }
       interventions: {
         Row: {
@@ -431,6 +469,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["interventions"]["Insert"]>
+        Relationships: []
       }
       audio_cues: {
         Row: {
@@ -462,6 +501,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["audio_cues"]["Insert"]>
+        Relationships: []
       }
       audio_events: {
         Row: {
@@ -491,6 +531,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["audio_events"]["Insert"]>
+        Relationships: []
       }
       rubrics: {
         Row: {
@@ -516,6 +557,33 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["rubrics"]["Insert"]>
+        Relationships: []
+      }
+      rubric_items: {
+        Row: {
+          id: string
+          rubric_id: string
+          rule_id: string | null
+          label: string
+          description: string | null
+          dimension: string
+          max_points: number
+          critical: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          rubric_id: string
+          rule_id?: string | null
+          label: string
+          description?: string | null
+          dimension: string
+          max_points?: number
+          critical?: boolean
+          created_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["rubric_items"]["Insert"]>
+        Relationships: []
       }
       scores: {
         Row: {
@@ -549,6 +617,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["scores"]["Insert"]>
+        Relationships: []
       }
       reports: {
         Row: {
@@ -582,6 +651,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["reports"]["Insert"]>
+        Relationships: []
       }
       audit_logs: {
         Row: {
@@ -611,6 +681,53 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["audit_logs"]["Insert"]>
+        Relationships: []
+      }
+      run_participants: {
+        Row: {
+          id: string
+          run_id: string
+          user_id: string
+          role: string
+          joined_at: string
+        }
+        Insert: {
+          id?: string
+          run_id: string
+          user_id: string
+          role: string
+          joined_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["run_participants"]["Insert"]>
+        Relationships: []
+      }
+      intervention_interpretations: {
+        Row: {
+          id: string
+          intervention_id: string
+          action_type: string
+          body_location: string | null
+          laterality: string | null
+          quality: string | null
+          confidence: number
+          ambiguity_flags: string[]
+          effect_description: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          intervention_id: string
+          action_type: string
+          body_location?: string | null
+          laterality?: string | null
+          quality?: string | null
+          confidence?: number
+          ambiguity_flags?: string[]
+          effect_description?: string | null
+          created_at?: string
+        }
+        Update: Partial<Database["public"]["Tables"]["intervention_interpretations"]["Insert"]>
+        Relationships: []
       }
       feature_flags: {
         Row: {
@@ -630,6 +747,7 @@ export type Database = {
           created_at?: string
         }
         Update: Partial<Database["public"]["Tables"]["feature_flags"]["Insert"]>
+        Relationships: []
       }
     }
     Views: Record<string, never>

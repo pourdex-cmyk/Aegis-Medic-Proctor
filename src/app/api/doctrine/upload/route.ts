@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Upload to Supabase Storage
-    const serviceSupabase = createServiceClient()
+    const serviceSupabase = await createServiceClient()
     const ext = file.name.split(".").pop() ?? "bin"
     const storagePath = `doctrine/${member.org_id}/${packId}/${Date.now()}-${encodeURIComponent(file.name)}`
 
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         status: "processing",
         chunk_count: 0,
       })
-      .select()
+      .select("id, title, file_type, status, chunk_count, created_at")
       .single()
 
     if (docError) throw docError

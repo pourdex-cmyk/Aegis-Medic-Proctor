@@ -18,11 +18,11 @@ export default async function ScenarioDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: scenario }, { data: casualties }, { data: injects }, { data: runs }] =
+  const [{ data: scenarioRaw }, { data: casualtiesRaw }, { data: injects }, { data: runs }] =
     await Promise.all([
       supabase
         .from("scenarios")
-        .select("*, doctrine_packs(name, version)")
+        .select("id, org_id, title, description, audience, environment, scenario_type, complexity, casualty_count, evac_delay_minutes, status, objectives, created_at, updated_at, doctrine_pack_id")
         .eq("id", id)
         .single(),
       supabase
@@ -32,9 +32,9 @@ export default async function ScenarioDetailPage({ params }: Props) {
         .order("triage_category"),
       supabase
         .from("scenario_injects")
-        .select("id, inject_type, trigger_type, trigger_value, title, description, elapsed_at_seconds")
+        .select("id, trigger_type, trigger_time_seconds, title, description")
         .eq("scenario_id", id)
-        .order("elapsed_at_seconds", { ascending: true }),
+        .order("trigger_time_seconds", { ascending: true }),
       supabase
         .from("scenario_runs")
         .select("id, status, clock_seconds, created_at")
@@ -43,12 +43,24 @@ export default async function ScenarioDetailPage({ params }: Props) {
         .limit(5),
     ])
 
-  if (!scenario) notFound()
+  if (!scenarioRaw) notFound()
+
+  type ScenarioRow = typeof scenarioRaw & { objectives?: string[] | null }
+  const scenario = scenarioRaw as unknown as ScenarioRow
+
+  // Cast casualty visible_injuries and baseline_vitals from Json to typed arrays
+  type CasualtyRow = {
+    id: string; callsign: string; display_label: string; triage_category: string; mechanism_of_injury: string;
+    visible_injuries: Array<{ type: string; location: string; severity: string; laterality?: string | null }>;
+    airway_status: string; breathing_status: string; circulation_state: string; neurologic_status: string;
+    pain_level: number;
+    baseline_vitals: { hr: number; rr: number; sbp: number; dbp: number; spo2: number; temp: number; avpu: string };
+  }
 
   return (
     <ScenarioDetail
       scenario={scenario}
-      casualties={casualties ?? []}
+      casualties={(casualtiesRaw as unknown as CasualtyRow[]) ?? []}
       injects={injects ?? []}
       recentRuns={runs ?? []}
     />

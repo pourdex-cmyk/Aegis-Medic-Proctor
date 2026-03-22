@@ -10,7 +10,7 @@ export default async function OnboardingPage() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect(ROUTES.SIGN_IN)
+  if (!user) redirect(ROUTES.signIn)
 
   // If already onboarded (has org membership), skip
   const { data: member } = await supabase
@@ -20,7 +20,7 @@ export default async function OnboardingPage() {
     .limit(1)
     .single()
 
-  if (member) redirect(ROUTES.DASHBOARD)
+  if (member) redirect(ROUTES.dashboard)
 
   const { data: profile } = await supabase
     .from("profiles")

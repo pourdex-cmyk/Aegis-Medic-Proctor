@@ -116,7 +116,7 @@ export function InviteAccept({ invite, isExpired, isAccepted, token }: InviteAcc
       return
     }
     toast.success("Invite accepted! Welcome to the team.")
-    router.push(ROUTES.DASHBOARD)
+    router.push(ROUTES.dashboard)
   }
 
   // Error states
@@ -126,7 +126,7 @@ export function InviteAccept({ invite, isExpired, isAccepted, token }: InviteAcc
         icon={<XCircle className="h-8 w-8 text-red-400" />}
         title="Invalid Invitation"
         message="This invite link is not valid or has already been used."
-        action={{ label: "Go to Sign In", href: ROUTES.SIGN_IN }}
+        action={{ label: "Go to Sign In", href: ROUTES.signIn }}
         color="border-red-800/40 bg-red-950/10"
       />
     )
@@ -138,7 +138,7 @@ export function InviteAccept({ invite, isExpired, isAccepted, token }: InviteAcc
         icon={<Clock className="h-8 w-8 text-amber-400" />}
         title="Invite Expired"
         message="This invitation has expired. Ask your organization admin to send a new invite."
-        action={{ label: "Go to Sign In", href: ROUTES.SIGN_IN }}
+        action={{ label: "Go to Sign In", href: ROUTES.signIn }}
         color="border-amber-800/40 bg-amber-950/10"
       />
     )
@@ -150,7 +150,7 @@ export function InviteAccept({ invite, isExpired, isAccepted, token }: InviteAcc
         icon={<CheckCircle2 className="h-8 w-8 text-green-400" />}
         title="Already Accepted"
         message="This invitation has already been accepted. Sign in to access your account."
-        action={{ label: "Sign In", href: ROUTES.SIGN_IN }}
+        action={{ label: "Sign In", href: ROUTES.signIn }}
         color="border-green-800/40 bg-green-950/10"
       />
     )

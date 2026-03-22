@@ -29,19 +29,26 @@ export default async function MascalPage({ params, searchParams }: Props) {
   if (!scenario) notFound()
 
   // Fetch live casualty states if run is active
-  let liveStates: Array<{ casualty_id: string; current_vitals: unknown; triage_override?: string | null }> = []
+  let liveStates: Array<{ casualty_id: string; current_vitals: unknown; triage_category?: string }> = []
   if (run?.id) {
     const { data } = await supabase
       .from("casualty_states")
-      .select("casualty_id, current_vitals, triage_override")
+      .select("casualty_id, current_vitals, triage_category")
       .eq("run_id", run.id)
     liveStates = data ?? []
+  }
+
+  type CasualtyRow = {
+    id: string; callsign: string; display_label: string; triage_category: string; mechanism_of_injury: string;
+    visible_injuries: Array<{ type: string; location: string; severity: string }>;
+    baseline_vitals: { hr: number; rr: number; sbp: number; spo2: number; avpu: string };
+    airway_status: string;
   }
 
   return (
     <MascalBoard
       scenario={scenario}
-      casualties={casualties ?? []}
+      casualties={(casualties as unknown as CasualtyRow[]) ?? []}
       run={run ?? null}
       liveStates={liveStates}
     />

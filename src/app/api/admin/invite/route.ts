@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       .is("accepted_at", null)
 
     // Create invite token
-    const token = generateId(32)
+    const token = generateId()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
 
     const { data: invite, error: inviteError } = await supabase
@@ -76,13 +76,13 @@ export async function POST(req: NextRequest) {
         invited_by: user.id,
         expires_at: expiresAt,
       })
-      .select()
+      .select("id, email, role, org_id, token, expires_at")
       .single()
 
     if (inviteError) throw inviteError
 
     // Send invite email via Supabase Auth invite (uses configured SMTP)
-    const serviceSupabase = createServiceClient()
+    const serviceSupabase = await createServiceClient()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
     const inviteUrl = `${appUrl}/invite/${token}`
 

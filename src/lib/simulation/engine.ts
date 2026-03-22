@@ -7,7 +7,7 @@
 import type { VitalSigns, CasualtyProfile, Intervention } from "@/lib/types"
 
 export type SimulationEvent = {
-  type: "vitals_update" | "status_change" | "deterioration" | "improvement" | "critical_threshold"
+  type: "vitals_update" | "status_change" | "deterioration" | "improvement" | "critical_threshold" | "intervention_applied"
   description: string
   data: Record<string, unknown>
   elapsed_seconds: number

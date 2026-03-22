@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const service = createServiceClient()
+    const service = await createServiceClient()
 
     // Look up invite by token column (not id)
     const { data: invite, error: inviteError } = await service

@@ -22,12 +22,12 @@ export default async function GradePage({ params }: Props) {
   ] = await Promise.all([
     supabase
       .from("scenario_runs")
-      .select("id, status, clock_seconds, started_at, ended_at, lead_proctor_id")
+      .select("id, status, clock_seconds, started_at, completed_at, lead_proctor_id")
       .eq("id", runId)
       .single(),
     supabase
       .from("scenarios")
-      .select("id, title, complexity, audience, casualty_count, objectives")
+      .select("id, title, complexity, audience, casualty_count")
       .eq("id", scenarioId)
       .single(),
     supabase
@@ -42,7 +42,7 @@ export default async function GradePage({ params }: Props) {
       .order("elapsed_seconds", { ascending: true }),
     supabase
       .from("scores")
-      .select("id, percentage, dimension_scores, raw_scores, notes, created_at")
+      .select("id, percentage, dimension_scores, evaluator_notes, created_at")
       .eq("run_id", runId)
       .single(),
   ])

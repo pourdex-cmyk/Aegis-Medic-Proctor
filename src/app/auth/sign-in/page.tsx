@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useTransition } from "react"
+import React, { useState, useTransition, Suspense } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
@@ -22,7 +22,7 @@ const signInSchema = z.object({
 
 type SignInForm = z.infer<typeof signInSchema>
 
-export default function SignInPage() {
+function SignInContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") ?? "/app/dashboard"
@@ -245,5 +245,13 @@ export default function SignInPage() {
         </motion.div>
       </div>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0c10]" />}>
+      <SignInContent />
+    </Suspense>
   )
 }

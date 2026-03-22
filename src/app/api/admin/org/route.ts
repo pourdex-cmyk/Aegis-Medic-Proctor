@@ -4,7 +4,7 @@ import { z } from "zod"
 
 const bodySchema = z.object({
   name: z.string().min(2).max(120).optional(),
-  settings: z.record(z.unknown()).optional(),
+  settings: z.record(z.string(), z.unknown()).optional(),
 })
 
 export async function PATCH(req: NextRequest) {

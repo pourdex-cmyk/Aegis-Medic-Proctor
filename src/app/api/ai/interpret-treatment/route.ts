@@ -44,20 +44,9 @@ export async function POST(request: Request) {
       temperature: 0.1,
     })
 
-    // Save interpretation if intervention_id provided
+    // Update intervention status if intervention_id provided
+    // (interpretation data is returned in the response body)
     if (intervention_id) {
-      await supabase.from("intervention_interpretations").insert({
-        intervention_id,
-        action_type: object.action_type,
-        body_location: object.body_location,
-        laterality: object.laterality,
-        quality: object.quality,
-        confidence: object.confidence,
-        ambiguity_flags: object.ambiguity_flags,
-        effect_description: object.effect_description,
-      })
-
-      // Update intervention status
       await supabase
         .from("interventions")
         .update({ status: "interpreted", action_type: object.action_type })
