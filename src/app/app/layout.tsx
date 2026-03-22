@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Sidebar } from "@/components/layout/sidebar"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { ROUTES } from "@/lib/constants"
 
 export const metadata: Metadata = {
   title: {
@@ -37,6 +38,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   type MemberWithOrg = { role: string; org_id: string; organizations: { name: string } | null }
   const member = memberRaw as unknown as MemberWithOrg | null
+
+  // No org membership — send to onboarding
+  if (!member) {
+    redirect(ROUTES.onboarding)
+  }
+
   const orgName = member?.organizations?.name
 
   return (

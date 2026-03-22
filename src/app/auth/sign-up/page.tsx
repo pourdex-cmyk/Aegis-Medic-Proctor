@@ -47,7 +47,7 @@ export default function SignUpPage() {
         password: data.password,
         options: {
           data: { display_name: data.display_name },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/onboarding`,
         },
       })
 
@@ -56,6 +56,20 @@ export default function SignUpPage() {
         return
       }
 
+      // Try to sign in immediately (works when email confirmation is disabled)
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
+
+      if (!signInError) {
+        toast.success("Account created!")
+        router.push("/onboarding")
+        router.refresh()
+        return
+      }
+
+      // Email confirmation required — show check email screen
       setSuccess(true)
     })
   }

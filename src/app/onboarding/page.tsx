@@ -16,6 +16,7 @@ export default async function OnboardingPage() {
   const { data: member } = await supabase
     .from("organization_members")
     .select("id")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .limit(1)
     .single()

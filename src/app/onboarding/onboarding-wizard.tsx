@@ -111,10 +111,7 @@ export function OnboardingWizard({ userId, userEmail, displayName }: OnboardingW
           .insert({
             name: orgName.trim(),
             slug: orgSlug || slugify(orgName),
-            type: orgType,     // schema NOT NULL column
-            org_type: orgType, // migration 003 alias
-            plan_tier: "free",
-            max_members: 5,
+            type: orgType,
           })
           .select("id")
           .single()
