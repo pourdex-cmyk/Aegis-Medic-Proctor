@@ -1,0 +1,47 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "devCommand": "next dev",
+  "installCommand": "npm install",
+  "regions": ["iad1"],
+  "functions": {
+    "src/app/api/ai/generate-scenario/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/ai/generate-aar/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/ai/copilot/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/ai/interpret-treatment/route.ts": {
+      "maxDuration": 15
+    },
+    "src/app/api/doctrine/upload/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://www.gravatar.com; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://vercel.live; frame-ancestors 'none';"
+        }
+      ]
+    }
+  ]
+}
