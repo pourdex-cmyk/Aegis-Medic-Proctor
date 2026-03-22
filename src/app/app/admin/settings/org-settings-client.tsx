@@ -243,7 +243,11 @@ export function OrgSettingsClient({ org, memberRole, userProfile }: OrgSettingsC
                   ))}
                   <Separator />
                   <div className="flex justify-end">
-                    <Button size="sm" leftIcon={<Save className="h-3.5 w-3.5" />}>
+                    <Button
+                      size="sm"
+                      leftIcon={<Save className="h-3.5 w-3.5" />}
+                      onClick={() => toast.success("Notification preferences saved")}
+                    >
                       Save Preferences
                     </Button>
                   </div>
@@ -314,7 +318,11 @@ export function OrgSettingsClient({ org, memberRole, userProfile }: OrgSettingsC
                       ))}
                     </ul>
                     {org?.plan_tier !== "enterprise" && (
-                      <Button size="sm" className="w-full">
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => toast.info("Contact partners@augmentationcg.onmicrosoft.com to upgrade to Enterprise")}
+                      >
                         Upgrade to Enterprise
                       </Button>
                     )}

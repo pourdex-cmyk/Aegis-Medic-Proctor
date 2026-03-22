@@ -26,7 +26,7 @@ export default async function DoctrinePackPage({ params }: Props) {
       .single(),
     supabase
       .from("doctrine_documents")
-      .select("id, title, file_type, status, chunk_count, created_at")
+      .select("id, title, file_type, file_url, status, chunk_count, created_at")
       .eq("pack_id", id)
       .order("created_at", { ascending: false }),
     supabase

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useTransition, useCallback } from "react"
+import React, { useState, useTransition, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -29,6 +29,7 @@ interface DoctrineDocument {
   id: string
   title: string
   file_type: string
+  file_url?: string | null
   status: string
   chunk_count: number
   created_at: string
@@ -97,6 +98,8 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
   const [ruleSearch, setRuleSearch] = useState("")
   const [ruleFilter, setRuleFilter] = useState<"all" | "pending" | "approved" | "rejected">("all")
   const [localRules, setLocalRules] = useState<DoctrineRule[]>(rules)
+  const [localDocuments, setLocalDocuments] = useState<DoctrineDocument[]>(documents)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const pendingRules = localRules.filter((r) => r.approval_status === "pending")
   const approvedRules = localRules.filter((r) => r.approval_status === "approved")
@@ -212,6 +215,51 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
     }
   }, [pack.id, router])
 
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
+    e.target.value = ""
+
+    const toastId = toast.loading(`Uploading ${files.length} document${files.length > 1 ? "s" : ""}…`)
+    let uploaded = 0
+    const newDocs: DoctrineDocument[] = []
+
+    for (const file of files) {
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("pack_id", pack.id)
+        formData.append("title", file.name.replace(/\.[^.]+$/, ""))
+        const res = await fetch("/api/doctrine/upload", { method: "POST", body: formData })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error ?? "Upload failed")
+        if (data.document) newDocs.push(data.document)
+        uploaded++
+      } catch (err) {
+        toast.error(`Failed to upload ${file.name}`, { description: err instanceof Error ? err.message : undefined })
+      }
+    }
+
+    toast.dismiss(toastId)
+    if (uploaded > 0) {
+      setLocalDocuments((prev) => [...newDocs, ...prev])
+      toast.success(`${uploaded} document${uploaded > 1 ? "s" : ""} uploaded`, {
+        description: "Documents are queued for chunking and rule extraction",
+      })
+    }
+  }, [pack.id])
+
+  const handleRemoveDocument = async (docId: string) => {
+    if (!window.confirm("Remove this document? This cannot be undone.")) return
+    const { error } = await supabase.from("doctrine_documents").delete().eq("id", docId)
+    if (error) {
+      toast.error("Failed to remove document")
+      return
+    }
+    setLocalDocuments((prev) => prev.filter((d) => d.id !== docId))
+    toast.success("Document removed")
+  }
+
   return (
     <div className="flex flex-col min-h-full">
       <Header
@@ -231,13 +279,24 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
               </Button>
             )}
             {canApprove && (
-              <Button
-                size="sm"
-                variant="secondary"
-                leftIcon={<Upload className="h-3.5 w-3.5" />}
-              >
-                Upload Documents
-              </Button>
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.txt,.md,.doc,.docx"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  leftIcon={<Upload className="h-3.5 w-3.5" />}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Upload Documents
+                </Button>
+              </>
             )}
           </div>
         }
@@ -320,7 +379,7 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
             </TabsTrigger>
             <TabsTrigger value="documents">
               <FileText className="h-3.5 w-3.5 mr-1.5" />
-              Documents ({documents.length})
+              Documents ({localDocuments.length})
             </TabsTrigger>
           </TabsList>
 
@@ -445,11 +504,11 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
               </div>
             )}
 
-            {documents.length === 0 ? (
+            {localDocuments.length === 0 ? (
               <div className="py-8 text-center text-xs text-[#4a5370]">No documents uploaded yet</div>
             ) : (
               <div className="space-y-2">
-                {documents.map((doc, i) => {
+                {localDocuments.map((doc, i) => {
                   const status = DOC_STATUS_CONFIG[doc.status] ?? DOC_STATUS_CONFIG.pending
                   const ext = doc.file_type ?? "txt"
                   return (
@@ -482,11 +541,26 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  if (doc.file_url) {
+                                    const a = document.createElement("a")
+                                    a.href = doc.file_url
+                                    a.download = doc.title
+                                    a.target = "_blank"
+                                    a.click()
+                                  } else {
+                                    toast.error("Download URL not available")
+                                  }
+                                }}
+                              >
                                 <Download className="h-4 w-4" /> Download
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem variant="destructive">
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => handleRemoveDocument(doc.id)}
+                              >
                                 <Trash2 className="h-4 w-4" /> Remove
                               </DropdownMenuItem>
                             </DropdownMenuContent>
