@@ -83,7 +83,7 @@ export function DoctrineClient({ packs, canManage }: DoctrineClientProps) {
         }
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Info banner */}
         <div className="flex items-start gap-3 rounded-xl border border-blue-800/40 bg-blue-950/20 px-4 py-3.5">
           <Shield className="h-4.5 w-4.5 text-blue-400 shrink-0 mt-0.5" />

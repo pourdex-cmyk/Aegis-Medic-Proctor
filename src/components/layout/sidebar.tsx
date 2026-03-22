@@ -59,7 +59,7 @@ export function Sidebar({ user, orgName, activeRunId }: SidebarProps) {
       initial={false}
       animate={{ width: collapsed ? 64 : 240 }}
       transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-      className="relative flex flex-col h-screen bg-[#0a0c10] border-r border-[#1e2330] flex-shrink-0 z-20"
+      className="relative hidden md:flex flex-col h-screen bg-[#0a0c10] border-r border-[#1e2330] flex-shrink-0 z-20"
     >
       {/* Header */}
       <div className={cn(

@@ -144,16 +144,16 @@ export function DashboardClient({
         activeRunId={activeRuns > 0 ? "active" : undefined}
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Welcome bar */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-          className="flex items-center justify-between"
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         >
           <div>
-            <h2 className="text-xl font-bold text-[#f0f4ff] tracking-tight">
+            <h2 className="text-lg md:text-xl font-bold text-[#f0f4ff] tracking-tight">
               Welcome back, {user?.display_name?.split(" ")[0] ?? "Operator"}
             </h2>
             <p className="text-sm text-[#6b7594] mt-0.5">
@@ -182,7 +182,7 @@ export function DashboardClient({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, delay: 0.06, ease: [0.25, 1, 0.5, 1] }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4"
         >
           {statsCards.map((stat) => {
             const Icon = stat.icon
@@ -500,9 +500,9 @@ export function DashboardClient({
         >
           <Card variant="accent">
             <CardContent className="p-5">
-              <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-blue-600/20 border border-blue-600/30 flex items-center justify-center">
+                  <div className="h-9 w-9 rounded-lg bg-blue-600/20 border border-blue-600/30 flex items-center justify-center shrink-0">
                     <Zap className="h-4.5 w-4.5 text-blue-400" />
                   </div>
                   <div>

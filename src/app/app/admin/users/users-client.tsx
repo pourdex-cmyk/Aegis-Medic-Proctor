@@ -164,7 +164,7 @@ export function UsersClient({ members: initialMembers, invites: initialInvites, 
         }
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
         <Input
           placeholder="Search members..."
           leftElement={<Search className="h-3.5 w-3.5" />}

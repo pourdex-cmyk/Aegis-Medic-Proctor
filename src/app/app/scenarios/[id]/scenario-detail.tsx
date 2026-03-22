@@ -133,7 +133,7 @@ export function ScenarioDetail({ scenario, casualties, injects, recentRuns }: Sc
         }
       />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Top stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           {[

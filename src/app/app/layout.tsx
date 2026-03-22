@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Sidebar } from "@/components/layout/sidebar"
+import { MobileNav } from "@/components/layout/mobile-nav"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { ROUTES } from "@/lib/constants"
@@ -57,9 +58,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         } : undefined}
         orgName={orgName}
       />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-16 md:pb-0">
         {children}
       </main>
+      <MobileNav />
     </div>
   )
 }

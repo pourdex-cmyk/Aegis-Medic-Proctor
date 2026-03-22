@@ -243,7 +243,7 @@ export function DoctrinePackDetail({ pack, documents, rules, canApprove }: Doctr
         }
       />
 
-      <div className="flex-1 p-6 space-y-5">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-5">
         {/* Pack status banner */}
         {pack.status === "pending_approval" && (
           <div className="flex items-start gap-3 rounded-xl border border-amber-800/40 bg-amber-950/10 px-4 py-3">

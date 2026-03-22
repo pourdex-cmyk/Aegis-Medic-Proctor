@@ -151,7 +151,7 @@ export function SettingsClient({ user, profile, membership }: SettingsClientProp
     <div className="flex flex-col min-h-full">
       <Header title="Profile Settings" subtitle="Manage your account and preferences" />
 
-      <div className="flex-1 p-6 max-w-2xl space-y-6">
+      <div className="flex-1 p-4 md:p-6 max-w-2xl space-y-6">
         {/* Section 1 — Profile */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}

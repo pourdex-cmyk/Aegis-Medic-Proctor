@@ -135,9 +135,9 @@ export function AnalyticsDashboard({ runs, scores, scenarios, totalRuns }: Analy
     <div className="flex flex-col min-h-full">
       <Header title="Analytics" subtitle="Training performance and trends" />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           {statsCards.map((s, i) => {
             const Icon = s.icon
             return (

@@ -147,6 +147,11 @@
 
 /* === UTILITIES === */
 @layer utilities {
+  /* Safe area bottom inset for phones with home indicator */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
   .glass {
     background: rgba(30, 35, 48, 0.72);
     backdrop-filter: blur(16px) saturate(180%);

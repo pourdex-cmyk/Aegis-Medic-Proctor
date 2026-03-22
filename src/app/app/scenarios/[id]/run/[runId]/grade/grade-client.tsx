@@ -275,7 +275,7 @@ export function GradeClient({ run, scenario, rubric, interventions, existingScor
         }
       />
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           {/* Score summary sidebar */}
           <div className="xl:col-span-1 space-y-4">

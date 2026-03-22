@@ -105,68 +105,20 @@ export function ScenariosClient({ scenarios, doctrinePacks }: ScenariosClientPro
         }
       />
 
-      <div className="flex-1 p-6 space-y-5">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-5">
         {/* Filters bar */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[200px] max-w-xs">
-            <Input
-              placeholder="Search scenarios, environments, tags..."
-              leftElement={<Search className="h-3.5 w-3.5" />}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <Select value={audienceFilter} onValueChange={setAudienceFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Audience" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All audiences</SelectItem>
-              <SelectItem value="military">Military</SelectItem>
-              <SelectItem value="law_enforcement">Law Enforcement</SelectItem>
-              <SelectItem value="ems">EMS</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={complexityFilter} onValueChange={setComplexityFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Complexity" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All levels</SelectItem>
-              <SelectItem value="basic">Basic</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-              <SelectItem value="advanced">Advanced</SelectItem>
-              <SelectItem value="expert">Expert</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="ready">Ready</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="ml-auto flex items-center gap-2">
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="updated">Last updated</SelectItem>
-                <SelectItem value="created">Date created</SelectItem>
-                <SelectItem value="title">Title A-Z</SelectItem>
-                <SelectItem value="casualties">Casualty count</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center rounded-md border border-[#2d3347] bg-[#0f1117] p-0.5 gap-0.5">
+        <div className="flex flex-col gap-3">
+          {/* Row 1: search + view toggle */}
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <Input
+                placeholder="Search scenarios..."
+                leftElement={<Search className="h-3.5 w-3.5" />}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center rounded-md border border-[#2d3347] bg-[#0f1117] p-0.5 gap-0.5 shrink-0">
               <button
                 onClick={() => setViewMode("grid")}
                 className={`p-1.5 rounded transition-colors ${viewMode === "grid" ? "bg-[#252b3b] text-[#f0f4ff]" : "text-[#4a5370] hover:text-[#6b7594]"}`}
@@ -180,6 +132,57 @@ export function ScenariosClient({ scenarios, doctrinePacks }: ScenariosClientPro
                 <List className="h-3.5 w-3.5" />
               </button>
             </div>
+          </div>
+          {/* Row 2: filter selects */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={audienceFilter} onValueChange={setAudienceFilter}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Audience" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All audiences</SelectItem>
+                <SelectItem value="military">Military</SelectItem>
+                <SelectItem value="law_enforcement">Law Enforcement</SelectItem>
+                <SelectItem value="ems">EMS</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={complexityFilter} onValueChange={setComplexityFilter}>
+              <SelectTrigger className="w-[130px]">
+                <SelectValue placeholder="Complexity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All levels</SelectItem>
+                <SelectItem value="basic">Basic</SelectItem>
+                <SelectItem value="intermediate">Intermediate</SelectItem>
+                <SelectItem value="advanced">Advanced</SelectItem>
+                <SelectItem value="expert">Expert</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[110px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="ready">Ready</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[130px] ml-auto">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated">Last updated</SelectItem>
+                <SelectItem value="created">Date created</SelectItem>
+                <SelectItem value="title">Title A-Z</SelectItem>
+                <SelectItem value="casualties">Casualty count</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

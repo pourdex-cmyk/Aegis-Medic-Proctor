@@ -92,7 +92,7 @@ export function OrgSettingsClient({ org, memberRole, userProfile }: OrgSettingsC
         subtitle="Manage your organization, members, and preferences"
       />
 
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-4 md:p-6">
         <Tabs defaultValue="general" className="space-y-6">
           <TabsList>
             <TabsTrigger value="general">

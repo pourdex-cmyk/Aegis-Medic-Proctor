@@ -145,9 +145,9 @@ export function ReportsClient({ reports, scores }: ReportsClientProps) {
         }
       />
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* Left: Report list */}
-        <div className="w-80 shrink-0 border-r border-[#1e2330] flex flex-col">
+        <div className="w-full md:w-80 shrink-0 border-b md:border-b-0 md:border-r border-[#1e2330] flex flex-col max-h-[40vh] md:max-h-none">
           <div className="p-4 border-b border-[#1e2330] space-y-3">
             <Input
               placeholder="Search reports..."

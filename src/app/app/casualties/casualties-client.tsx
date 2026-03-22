@@ -256,7 +256,7 @@ export function CasualtiesClient({ casualties, scenarios }: CasualtiesClientProp
         subtitle="Pre-built patient profiles for training scenarios"
       />
 
-      <div className="flex-1 p-6 space-y-5">
+      <div className="flex-1 p-4 md:p-6 space-y-4 md:space-y-5">
         {/* Stats bar */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="col-span-2 sm:col-span-1 rounded-xl border border-[#2d3347] bg-[#0f1117] px-4 py-3">
@@ -275,8 +275,8 @@ export function CasualtiesClient({ casualties, scenarios }: CasualtiesClientProp
         </div>
 
         {/* Filter bar */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[200px] max-w-xs">
+        <div className="flex flex-col gap-3">
+          <div className="flex-1">
             <Input
               placeholder="Search callsign, label, MOI..."
               leftElement={<Search className="h-3.5 w-3.5" />}
@@ -284,7 +284,7 @@ export function CasualtiesClient({ casualties, scenarios }: CasualtiesClientProp
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-
+          <div className="flex flex-wrap items-center gap-2">
           {/* Triage chips */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {TRIAGE_FILTERS.map((t) => {
@@ -320,7 +320,7 @@ export function CasualtiesClient({ casualties, scenarios }: CasualtiesClientProp
                     : "bg-transparent border-[#2d3347] text-[#4a5370] hover:border-[#353c52] hover:text-[#6b7594]"
                 }`}
               >
-                {o === "AI" ? "AI Generated" : o === "Manual" ? "Manual" : "All Origins"}
+                {o === "AI" ? "AI Gen." : o === "Manual" ? "Manual" : "All Origins"}
               </button>
             ))}
           </div>
@@ -329,6 +329,7 @@ export function CasualtiesClient({ casualties, scenarios }: CasualtiesClientProp
             {filtered.length} profile{filtered.length !== 1 ? "s" : ""}
             {search || triageFilter !== "All" || originFilter !== "All" ? " (filtered)" : ""}
           </p>
+          </div>
         </div>
 
         {/* Grid */}
