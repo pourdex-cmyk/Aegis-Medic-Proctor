@@ -60,7 +60,8 @@ interface ScenariosClientProps {
   doctrinePacks: Array<{ id: string; name: string; status: string }>
 }
 
-export function ScenariosClient({ scenarios, doctrinePacks }: ScenariosClientProps) {
+export function ScenariosClient({ scenarios: initialScenarios, doctrinePacks }: ScenariosClientProps) {
+  const [scenarioList, setScenarioList] = useState<Scenario[]>(initialScenarios)
   const [search, setSearch] = useState("")
   const [audienceFilter, setAudienceFilter] = useState("all")
   const [complexityFilter, setComplexityFilter] = useState("all")
@@ -68,7 +69,60 @@ export function ScenariosClient({ scenarios, doctrinePacks }: ScenariosClientPro
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [sortBy, setSortBy] = useState("updated")
 
+  const handleArchive = async (id: string) => {
+    const supabase = (await import("@/lib/supabase/client")).createClient()
+    const { error } = await supabase.from("scenarios").update({ status: "archived" }).eq("id", id)
+    if (error) { toast.error("Failed to archive scenario"); return }
+    setScenarioList((prev) => prev.map((s) => s.id === id ? { ...s, status: "archived" } : s))
+    toast.success("Scenario archived")
+  }
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return
+    const supabase = (await import("@/lib/supabase/client")).createClient()
+    const { error } = await supabase.from("scenarios").delete().eq("id", id)
+    if (error) { toast.error("Failed to delete scenario"); return }
+    setScenarioList((prev) => prev.filter((s) => s.id !== id))
+    toast.success("Scenario deleted")
+  }
+
+  const handleDuplicate = async (s: Scenario) => {
+    const supabase = (await import("@/lib/supabase/client")).createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { toast.error("Not signed in"); return }
+    const { data: member } = await supabase
+      .from("organization_members")
+      .select("org_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .single()
+    if (!member) { toast.error("No org found"); return }
+    const { data: newScenario, error } = await supabase
+      .from("scenarios")
+      .insert({
+        org_id: member.org_id,
+        created_by: user.id,
+        title: `${s.title} (Copy)`,
+        description: s.description,
+        audience: s.audience,
+        environment: s.environment,
+        scenario_type: s.scenario_type,
+        complexity: s.complexity,
+        casualty_count: s.casualty_count,
+        evac_delay_minutes: s.evac_delay_minutes,
+        status: "draft",
+        ai_generated: false,
+        tags: s.tags,
+      })
+      .select("id, title, description, audience, environment, scenario_type, complexity, casualty_count, evac_delay_minutes, status, ai_generated, tags, created_at, updated_at")
+      .single()
+    if (error) { toast.error("Failed to duplicate scenario"); return }
+    setScenarioList((prev) => [newScenario as Scenario, ...prev])
+    toast.success(`"${s.title}" duplicated`)
+  }
+
   const filtered = useMemo(() => {
+    const scenarios = scenarioList
     return scenarios
       .filter((s) => {
         if (search && !s.title.toLowerCase().includes(search.toLowerCase()) &&
@@ -87,13 +141,13 @@ export function ScenariosClient({ scenarios, doctrinePacks }: ScenariosClientPro
         if (sortBy === "casualties") return b.casualty_count - a.casualty_count
         return 0
       })
-  }, [scenarios, search, audienceFilter, complexityFilter, statusFilter, sortBy])
+  }, [scenarioList, search, audienceFilter, complexityFilter, statusFilter, sortBy])
 
   return (
     <div className="flex flex-col min-h-full">
       <Header
         title="Scenario Library"
-        subtitle={`${scenarios.length} scenarios`}
+        subtitle={`${scenarioList.length} scenarios`}
         actions={
           <div className="flex items-center gap-2">
             <Link href="/app/scenarios/new">
@@ -205,7 +259,8 @@ export function ScenariosClient({ scenarios, doctrinePacks }: ScenariosClientPro
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger"
           >
             {filtered.map((s, i) => (
-              <ScenarioCard key={s.id} scenario={s} index={i} />
+              <ScenarioCard key={s.id} scenario={s} index={i}
+                onArchive={handleArchive} onDelete={handleDelete} onDuplicate={handleDuplicate} />
             ))}
           </motion.div>
         ) : (
@@ -216,7 +271,8 @@ export function ScenariosClient({ scenarios, doctrinePacks }: ScenariosClientPro
             className="space-y-2 stagger"
           >
             {filtered.map((s, i) => (
-              <ScenarioListItem key={s.id} scenario={s} index={i} />
+              <ScenarioListItem key={s.id} scenario={s} index={i}
+                onArchive={handleArchive} onDelete={handleDelete} onDuplicate={handleDuplicate} />
             ))}
           </motion.div>
         )}
@@ -225,7 +281,13 @@ export function ScenariosClient({ scenarios, doctrinePacks }: ScenariosClientPro
   )
 }
 
-function ScenarioCard({ scenario: s, index }: { scenario: Scenario; index: number }) {
+type ScenarioActions = {
+  onArchive: (id: string) => void
+  onDelete: (id: string, title: string) => void
+  onDuplicate: (s: Scenario) => void
+}
+
+function ScenarioCard({ scenario: s, index, onArchive, onDelete, onDuplicate }: { scenario: Scenario; index: number } & ScenarioActions) {
   const c = complexityColors[s.complexity] ?? complexityColors.basic
   return (
     <motion.div
@@ -265,14 +327,16 @@ function ScenarioCard({ scenario: s, index }: { scenario: Scenario; index: numbe
                     <Edit2 className="h-4 w-4" /> Edit scenario
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDuplicate(s)}>
                   <Copy className="h-4 w-4" /> Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <Archive className="h-4 w-4" /> Archive
-                </DropdownMenuItem>
-                <DropdownMenuItem variant="destructive">
+                {s.status !== "archived" && (
+                  <DropdownMenuItem onClick={() => onArchive(s.id)}>
+                    <Archive className="h-4 w-4" /> Archive
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem variant="destructive" onClick={() => onDelete(s.id, s.title)}>
                   <Trash2 className="h-4 w-4" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -345,7 +409,7 @@ function ScenarioCard({ scenario: s, index }: { scenario: Scenario; index: numbe
   )
 }
 
-function ScenarioListItem({ scenario: s, index }: { scenario: Scenario; index: number }) {
+function ScenarioListItem({ scenario: s, index, onArchive, onDelete, onDuplicate }: { scenario: Scenario; index: number } & ScenarioActions) {
   const c = complexityColors[s.complexity] ?? complexityColors.basic
   return (
     <motion.div
@@ -399,11 +463,16 @@ function ScenarioListItem({ scenario: s, index }: { scenario: Scenario; index: n
                   <Edit2 className="h-4 w-4" /> Edit
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDuplicate(s)}>
                 <Copy className="h-4 w-4" /> Duplicate
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive">
+              {s.status !== "archived" && (
+                <DropdownMenuItem onClick={() => onArchive(s.id)}>
+                  <Archive className="h-4 w-4" /> Archive
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem variant="destructive" onClick={() => onDelete(s.id, s.title)}>
                 <Trash2 className="h-4 w-4" /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>

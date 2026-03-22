@@ -302,7 +302,19 @@ export function UsersClient({ members: initialMembers, invites: initialInvites, 
                               <DropdownMenuItem onClick={() => handleCopyInviteLink(invite.id)}>
                                 <Copy className="h-4 w-4" /> Copy invite link
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onClick={async () => {
+                                try {
+                                  const res = await fetch("/api/admin/invite", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ email: invite.email, role: invite.role }),
+                                  })
+                                  if (!res.ok) throw new Error((await res.json()).error ?? "Failed")
+                                  toast.success("Invite resent")
+                                } catch (err) {
+                                  toast.error(err instanceof Error ? err.message : "Failed to resend")
+                                }
+                              }}>
                                 <RefreshCw className="h-4 w-4" /> Resend email
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />

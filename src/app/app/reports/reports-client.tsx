@@ -112,9 +112,20 @@ export function ReportsClient({ reports, scores }: ReportsClientProps) {
   }, [selectedScore])
 
   const handleExport = (format: "pdf" | "json") => {
-    toast.info(`Exporting as ${format.toUpperCase()}`, {
-      description: "Export will be available in your downloads momentarily.",
-    })
+    if (!selectedReport) return
+    if (format === "json") {
+      const blob = new Blob([JSON.stringify(selectedReport, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const title = selectedReport.scenario_runs?.scenarios?.title ?? "report"
+      a.href = url
+      a.download = `aar-${title.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success("Report exported as JSON")
+    } else {
+      window.print()
+    }
   }
 
   return (

@@ -167,13 +167,15 @@ export function DashboardClient({
                 New Scenario
               </Button>
             </Link>
-            <Button
-              variant="secondary"
-              size="sm"
-              leftIcon={<Play className="h-3.5 w-3.5 text-green-400" />}
-            >
-              Quick Launch
-            </Button>
+            <Link href="/app/scenarios">
+              <Button
+                variant="secondary"
+                size="sm"
+                leftIcon={<Play className="h-3.5 w-3.5 text-green-400" />}
+              >
+                Quick Launch
+              </Button>
+            </Link>
           </div>
         </motion.div>
 

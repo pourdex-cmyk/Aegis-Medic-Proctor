@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useRef, useState, useTransition } from "react"
+import React, { useRef, useState, useTransition, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { motion } from "framer-motion"
 import {
   BookOpen, Plus, Upload, CheckCircle2, Clock, AlertCircle,
@@ -114,14 +115,11 @@ function NewPackDialog({
 
       if (!member) { toast.error("No organization found"); return }
 
-      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
-
       const { data: pack, error } = await supabase
         .from("doctrine_packs")
         .insert({
           org_id: member.org_id,
           name: name.trim(),
-          slug,
           version: "1.0",
           audience,
           description: description.trim() || null,
@@ -390,6 +388,10 @@ export function DoctrineClient({ packs: initialPacks, canManage }: DoctrineClien
     router.refresh()
   }
 
+  const handleStatusChange = (id: string, newStatus: string) => {
+    setPacks((prev) => prev.map((p) => p.id === id ? { ...p, status: newStatus } : p))
+  }
+
   return (
     <div className="flex flex-col min-h-full">
       <Header
@@ -452,7 +454,7 @@ export function DoctrineClient({ packs: initialPacks, canManage }: DoctrineClien
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5 stagger">
             {filtered.map((pack, i) => (
-              <DoctrinePackCard key={pack.id} pack={pack} index={i} canManage={canManage} onUpload={() => setUploadOpen(true)} />
+              <DoctrinePackCard key={pack.id} pack={pack} index={i} canManage={canManage} onUpload={() => setUploadOpen(true)} onStatusChange={handleStatusChange} />
             ))}
           </div>
         )}
@@ -507,18 +509,56 @@ export function DoctrineClient({ packs: initialPacks, canManage }: DoctrineClien
 }
 
 function DoctrinePackCard({
-  pack, index, canManage, onUpload,
+  pack, index, canManage, onUpload, onStatusChange,
 }: {
   pack: DoctrinePack
   index: number
   canManage: boolean
   onUpload: () => void
+  onStatusChange: (id: string, status: string) => void
 }) {
+  const supabase = createClient()
   const status = statusConfig[pack.status] ?? statusConfig.draft
   const StatusIcon = status.icon
   const approvalProgress = pack.rule_count > 0
     ? Math.round((pack.rule_count * 0.8) / pack.rule_count * 100)
     : 0
+
+  const handleApprove = async () => {
+    const { error } = await supabase
+      .from("doctrine_packs")
+      .update({ status: "approved", approved_at: new Date().toISOString() })
+      .eq("id", pack.id)
+    if (error) { toast.error("Failed to approve pack"); return }
+    toast.success(`"${pack.name}" approved`)
+    onStatusChange(pack.id, "approved")
+  }
+
+  const handleArchive = async () => {
+    const { error } = await supabase
+      .from("doctrine_packs")
+      .update({ status: "archived" })
+      .eq("id", pack.id)
+    if (error) { toast.error("Failed to archive pack"); return }
+    toast.success(`"${pack.name}" archived`)
+    onStatusChange(pack.id, "archived")
+  }
+
+  const handleExportRules = async () => {
+    const { data: rules, error } = await supabase
+      .from("doctrine_rules")
+      .select("*")
+      .eq("pack_id", pack.id)
+    if (error) { toast.error("Failed to export rules"); return }
+    const blob = new Blob([JSON.stringify(rules, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${pack.name.replace(/\s+/g, "-").toLowerCase()}-rules.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${rules?.length ?? 0} rules`)
+  }
 
   return (
     <motion.div
@@ -557,23 +597,25 @@ function DoctrinePackCard({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Eye className="h-4 w-4" /> View details
+                    <DropdownMenuItem asChild>
+                      <Link href={`/app/doctrine/${pack.id}`}>
+                        <Eye className="h-4 w-4" /> View details
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={onUpload}>
                       <Upload className="h-4 w-4" /> Add documents
                     </DropdownMenuItem>
                     {pack.status === "pending_approval" && (
-                      <DropdownMenuItem className="text-green-400">
+                      <DropdownMenuItem className="text-green-400" onClick={handleApprove}>
                         <CheckSquare className="h-4 w-4" /> Approve pack
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportRules}>
                       <Download className="h-4 w-4" /> Export rules
                     </DropdownMenuItem>
                     {pack.status !== "archived" && (
-                      <DropdownMenuItem variant="destructive">
+                      <DropdownMenuItem variant="destructive" onClick={handleArchive}>
                         <Archive className="h-4 w-4" /> Archive
                       </DropdownMenuItem>
                     )}
@@ -622,9 +664,11 @@ function DoctrinePackCard({
             <Tag className="h-3 w-3 text-[#353c52]" />
             <span className="text-[10px] text-[#353c52] uppercase tracking-wider">{pack.audience}</span>
           </div>
-          <Button variant="ghost" size="xs" rightIcon={<ChevronRight className="h-3 w-3" />}>
-            View rules
-          </Button>
+          <Link href={`/app/doctrine/${pack.id}`}>
+            <Button variant="ghost" size="xs" rightIcon={<ChevronRight className="h-3 w-3" />}>
+              View rules
+            </Button>
+          </Link>
         </div>
       </Card>
     </motion.div>
