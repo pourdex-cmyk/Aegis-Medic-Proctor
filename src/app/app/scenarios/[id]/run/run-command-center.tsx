@@ -7,7 +7,7 @@ import {
   VolumeX, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2,
   Radio, Zap, Plus, Send, Brain, MessageSquare, Target,
   Eye, EyeOff, Droplets, Wind, Shield, RotateCcw, FastForward,
-  User, ArrowUpRight, X, Stethoscope, Mic, Bell
+  User, ArrowUpRight, X, Stethoscope, Mic, Bell, Smartphone, Copy, QrCode
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +20,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog"
 import { cn, formatDuration, formatRelativeTime } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { TRIAGE_CATEGORIES, VITAL_RANGES } from "@/lib/constants"
@@ -99,6 +102,15 @@ export function RunCommandCenter({
   )
 
   const selectedCasualty = casualties.find((c) => c.id === selectedCasualtyId)
+
+  // Actor session codes (generated when run starts)
+  const [actorSessions, setActorSessions] = useState<{ casualtyId: string; callsign: string; token: string }[]>([])
+  const [showActorCodes, setShowActorCodes] = useState(false)
+
+  const generateToken = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
+  }
   const currentVitals = selectedCasualtyId ? casualtyVitals[selectedCasualtyId] : null
 
   // Clock
@@ -184,6 +196,27 @@ export function RunCommandCenter({
           triage_category: c.triage_category,
         }))
       )
+
+      // Generate patient actor tokens
+      const sessions = casualties.map((c) => ({
+        run_id: runData.id,
+        casualty_id: c.id,
+        token: generateToken(),
+        expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
+      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: sessionError } = await (supabase as any)
+        .from("casualty_actor_sessions")
+        .insert(sessions)
+      if (!sessionError) {
+        const actorData = casualties.map((c, i) => ({
+          casualtyId: c.id,
+          callsign: c.callsign,
+          token: sessions[i].token,
+        }))
+        setActorSessions(actorData)
+        setShowActorCodes(true)
+      }
 
       setRun(runData as unknown as ScenarioRun)
       setIsRunning(true)
@@ -353,6 +386,16 @@ export function RunCommandCenter({
 
         {/* Controls */}
         <div className="flex items-center gap-2 ml-auto">
+          {actorSessions.length > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              leftIcon={<Smartphone className="h-3.5 w-3.5" />}
+              onClick={() => setShowActorCodes(true)}
+            >
+              Patient Codes
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -728,6 +771,61 @@ export function RunCommandCenter({
           </Tabs>
         </div>
       </div>
+
+      {/* ── Patient Actor Codes modal ────────────────────────────────── */}
+      <Dialog open={showActorCodes} onOpenChange={setShowActorCodes}>
+        <DialogContent size="sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Smartphone className="h-4 w-4 text-blue-400" />
+              Patient Actor Codes
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <p className="text-xs text-[#6b7594]">
+              Give each actor their code. They open{" "}
+              <span className="font-mono text-blue-400">
+                {typeof window !== "undefined" ? window.location.origin : ""}/role-player
+              </span>{" "}
+              on their phone and enter the code below.
+            </p>
+            {actorSessions.map((s) => {
+              const url = typeof window !== "undefined"
+                ? `${window.location.origin}/role-player/${s.token}`
+                : `/role-player/${s.token}`
+              return (
+                <div
+                  key={s.casualtyId}
+                  className="flex items-center gap-4 rounded-xl border border-[#2d3347] bg-[#0f1117] px-4 py-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#4a5370] font-semibold uppercase tracking-wider mb-0.5">
+                      {s.callsign}
+                    </p>
+                    <p className="font-mono text-3xl font-black text-blue-400 tracking-[0.25em] leading-none">
+                      {s.token}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    leftIcon={<Copy className="h-3.5 w-3.5" />}
+                    onClick={() => {
+                      navigator.clipboard.writeText(url)
+                      toast.success(`Link copied for ${s.callsign}`)
+                    }}
+                  >
+                    Copy Link
+                  </Button>
+                </div>
+              )
+            })}
+            <p className="text-[11px] text-[#3e465e] pt-1">
+              Codes expire 12 hours after the run starts. Patients will see ENDEX automatically when you end the run.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
