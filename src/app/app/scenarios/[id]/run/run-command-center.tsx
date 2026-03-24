@@ -485,14 +485,14 @@ export function RunCommandCenter({
                   key={s.casualtyId}
                   className="flex items-center gap-2 rounded-lg border border-[#2d3347] bg-[#0f1117] px-3 py-1 shrink-0"
                 >
-                  <span className="text-[10px] text-[#4a5370] font-semibold">{s.callsign}</span>
-                  <span className="font-mono text-sm font-black text-blue-400 tracking-[0.2em]">{s.token}</span>
+                  <span className="text-[10px] text-[#4a5370] font-semibold shrink-0">{s.callsign}</span>
+                  <span className="font-mono text-[11px] text-blue-400 truncate">{url}</span>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(url)
                       toast.success(`Link copied for ${s.callsign}`)
                     }}
-                    className="text-[#3e465e] hover:text-[#9daabf] transition-colors"
+                    className="text-[#3e465e] hover:text-[#9daabf] transition-colors shrink-0"
                     title="Copy actor link"
                   >
                     <Copy className="h-3 w-3" />
@@ -501,9 +501,6 @@ export function RunCommandCenter({
               )
             })}
           </div>
-          <span className="text-[10px] text-[#3e465e] shrink-0 hidden sm:block">
-            /role-player/[CODE]
-          </span>
         </div>
       )}
 
