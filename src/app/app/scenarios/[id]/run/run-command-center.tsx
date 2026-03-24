@@ -317,6 +317,15 @@ export function RunCommandCenter({
         toast.success(`Logged: ${interpretation.action_type}`, {
           description: interpretation.confidence < 0.7 ? `⚠ Low confidence — review: ${interpretation.ambiguity_flags.join(", ")}` : undefined,
         })
+
+        // Push acting cue to the actor's phone via realtime
+        const cue = getActorCue(interpretation.action_type)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any)
+          .from("casualty_actor_sessions")
+          .update({ last_cue: cue })
+          .eq("scenario_id", scenario.id)
+          .eq("casualty_id", selectedCasualtyId)
       }
 
       setTreatmentInput("")
@@ -351,6 +360,30 @@ export function RunCommandCenter({
       setIsCopilotLoading(false)
       setCopilotQuery("")
     }
+  }
+
+  const getActorCue = (actionType: string): string => {
+    const cues: Record<string, string> = {
+      tourniquet_application:    "A tourniquet has been applied to your limb. Stop simulating active bleeding from that extremity. You still have severe pain — wince and vocalize — but the blood loss is now controlled. Acknowledge the medic with a nod or grunt.",
+      wound_packing:             "Your wound is being packed with gauze. React to the pressure — wince and groan loudly. The bleeding should slow. Stay tense and guard the injury site.",
+      hemorrhage_control:        "Hemorrhage control applied. Slow down your active bleeding portrayal. You are still in significant pain but losing less blood. React with labored breathing.",
+      npa_insertion:             "A nasal airway has been inserted. Allow your breathing to become slightly easier. You can still be in pain, but your airway feels a bit more open. Do not pull it out.",
+      airway_management:         "Your airway is being managed. Open your mouth slightly and allow the medic to work. Your breathing may ease a little after.",
+      needle_decompression:      "Needle decompression performed on your chest. Take a slightly deeper breath. Your respiratory distress should reduce noticeably. Relax your chest tension a little.",
+      chest_seal:                "A chest seal has been applied. Your breathing should feel slightly more controlled. Reduce the intensity of your respiratory distress.",
+      iv_access:                 "IV access has been established in your arm. Wince at the needle insertion. Stay still while they work. You may feel slightly calmer knowing help is coming.",
+      fluid_resuscitation:       "Fluids are being pushed through your IV. Stay still. You may feel slightly warmer or lightheaded. Do not remove the line.",
+      reassessment:              "You are being reassessed. Stay in character. Allow the medic to check your injuries and vitals. Respond to direct questions with short, labored sentences. Do not volunteer extra information.",
+      tq_check:                  "Your tourniquet is being checked and tightened. React to the pressure on your limb — it hurts. Vocalize the pain. Do not move the limb.",
+      splint_application:        "A splint is being applied to your limb. React to any movement with vocalized pain. Once it is on, try not to move that extremity.",
+      c_spine_precautions:       "Cervical spine precautions are being applied. Do not move your head or neck. Stay rigid and still. Let the medic control your head position.",
+      cpr:                       "CPR is in progress. You are unresponsive. Do not react or move. Remain completely still.",
+      medication_administration:  "Medication has been administered. Depending on the drug, you may feel slightly drowsy, less pain, or calmer. React naturally and gradually — not instantly.",
+      wound_closure:             "Your wound is being closed or dressed. The immediate pain of the injury is slightly less. You are still uncomfortable but acknowledge the treatment.",
+      oxygen_administration:     "Oxygen is being administered. Allow your breathing to ease slightly. You can relax your respiratory distress a little.",
+    }
+    return cues[actionType]
+      ?? `Treatment applied: ${actionType.replace(/_/g, " ")}. Acknowledge the medic and adjust your performance to reflect that care is being given. Stay in character.`
   }
 
   const handlePushVitals = async () => {

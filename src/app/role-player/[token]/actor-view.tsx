@@ -134,15 +134,21 @@ export function ActorView({ token }: { token: string }) {
             .map((i) => `${i.severity} ${i.type} to the ${i.location}`)
             .join(", ")
           const complaint = data.casualty.audio_profile?.primary_complaint ?? ""
+          const painGuide =
+            data.casualty.pain_level >= 8 ? "You are in severe distress. Writhe, moan, and struggle to speak in full sentences." :
+            data.casualty.pain_level >= 5 ? "You are in moderate pain. Grimace, speak in short sentences, and guard your injury." :
+            "You are in mild discomfort. You can speak normally but acknowledge the pain."
           const parts = [
-            `${data.casualty.callsign}. Scenario is now active. Get into character.`,
+            `${data.casualty.callsign}. Scenario is now active. Get into character now.`,
             `Your mechanism of injury: ${data.casualty.mechanism_of_injury}.`,
             inj ? `You have the following visible wounds: ${inj}.` : "",
-            complaint ? `Your complaint to say to medics: ${complaint}.` : "",
-            `Act with a pain level of ${data.casualty.pain_level} out of 10.`,
+            complaint ? `When a medic approaches, say: ${complaint}.` : "",
+            painGuide,
             data.casualty.airway_status !== "patent"
-              ? `Your airway is ${data.casualty.airway_status.replace(/_/g, " ")}.`
+              ? `Your airway is ${data.casualty.airway_status.replace(/_/g, " ")}. Breathe accordingly.`
               : "",
+            "Respond to medic questions with short answers. React physically when they touch your injuries.",
+            "Do not break character until you hear ENDEX.",
           ].filter(Boolean).join(" ")
           setTimeout(() => speak(parts, true), 300)
         } else if (newStatus === "paused") {
@@ -189,12 +195,20 @@ export function ActorView({ token }: { token: string }) {
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload: any) => {
-          const row = payload.new as { current_vitals?: VitalSigns | null; proctor_note?: string | null }
+          const row = payload.new as {
+            current_vitals?: VitalSigns | null
+            proctor_note?: string | null
+            last_cue?: string | null
+          }
           if (row.current_vitals) {
             setLiveVitals(row.current_vitals)
             speak("Vitals updated by proctor.", false)
           }
           if (row.proctor_note !== undefined) setProctorNote(row.proctor_note ?? null)
+          if (row.last_cue) {
+            // Small delay so it doesn't overlap with any in-flight speech
+            setTimeout(() => speak(row.last_cue!, false), 600)
+          }
         }
       )
       .subscribe()
