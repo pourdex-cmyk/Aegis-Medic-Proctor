@@ -14,7 +14,7 @@ export async function GET(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: session, error: sessionError } = await (supabase as any)
     .from("casualty_actor_sessions")
-    .select("id, scenario_id, run_id, casualty_id, expires_at, current_vitals, proctor_note")
+    .select("id, scenario_id, run_id, casualty_id, expires_at, current_vitals, proctor_note, last_cue")
     .eq("token", token.toUpperCase().trim())
     .single() as {
       data: {
@@ -25,6 +25,7 @@ export async function GET(
         expires_at: string
         current_vitals: Record<string, unknown> | null
         proctor_note: string | null
+        last_cue: string | null
       } | null
       error: unknown
     }
@@ -51,6 +52,7 @@ export async function GET(
   const sessionPayload = {
     current_vitals: session.current_vitals ?? null,
     proctor_note: session.proctor_note ?? null,
+    last_cue: session.last_cue ?? null,
   }
 
   // If run hasn't started yet, return standby state
