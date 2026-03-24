@@ -14,7 +14,7 @@ export async function GET(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: session, error: sessionError } = await (supabase as any)
     .from("casualty_actor_sessions")
-    .select("id, scenario_id, run_id, casualty_id, expires_at")
+    .select("id, scenario_id, run_id, casualty_id, expires_at, current_vitals, proctor_note")
     .eq("token", token.toUpperCase().trim())
     .single() as {
       data: {
@@ -23,6 +23,8 @@ export async function GET(
         run_id: string | null
         casualty_id: string
         expires_at: string
+        current_vitals: Record<string, unknown> | null
+        proctor_note: string | null
       } | null
       error: unknown
     }
@@ -46,10 +48,15 @@ export async function GET(
     return NextResponse.json({ error: "Casualty not found" }, { status: 404 })
   }
 
+  const sessionPayload = {
+    current_vitals: session.current_vitals ?? null,
+    proctor_note: session.proctor_note ?? null,
+  }
+
   // If run hasn't started yet, return standby state
   if (!session.run_id) {
     return NextResponse.json(
-      { run: { id: null, status: "standby", clock_seconds: 0 }, casualty },
+      { run: { id: null, status: "standby", clock_seconds: 0, target_duration_minutes: null }, casualty, session: sessionPayload },
       { headers: { "Cache-Control": "no-store" } }
     )
   }
@@ -57,19 +64,19 @@ export async function GET(
   // Fetch live run state
   const { data: run } = await supabase
     .from("scenario_runs")
-    .select("id, status, clock_seconds, started_at")
+    .select("id, status, clock_seconds, started_at, target_duration_minutes")
     .eq("id", session.run_id)
     .single()
 
   if (!run) {
     return NextResponse.json(
-      { run: { id: null, status: "standby", clock_seconds: 0 }, casualty },
+      { run: { id: null, status: "standby", clock_seconds: 0, target_duration_minutes: null }, casualty, session: sessionPayload },
       { headers: { "Cache-Control": "no-store" } }
     )
   }
 
   return NextResponse.json(
-    { run, casualty },
+    { run, casualty, session: sessionPayload },
     { headers: { "Cache-Control": "no-store" } }
   )
 }

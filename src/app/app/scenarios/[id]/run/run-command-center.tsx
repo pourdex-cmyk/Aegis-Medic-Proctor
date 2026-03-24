@@ -52,7 +52,7 @@ interface Intervention {
 }
 
 interface RunCommandCenterProps {
-  scenario: { id: string; title: string; environment: string; complexity: string; doctrine_packs?: { name: string } | null }
+  scenario: { id: string; title: string; environment: string; complexity: string; evac_delay_minutes: number; doctrine_packs?: { name: string } | null }
   casualties: CasualtyProfile[]
   activeRun: ScenarioRun | null
   userId: string
@@ -102,6 +102,10 @@ export function RunCommandCenter({
   )
 
   const selectedCasualty = casualties.find((c) => c.id === selectedCasualtyId)
+
+  // Per-casualty vitals draft (editable overrides before pushing to actor)
+  const [vitalsDraft, setVitalsDraft] = useState<Record<string, Partial<VitalSigns>>>({})
+  const [isPushingVitals, setIsPushingVitals] = useState(false)
 
   // Actor session codes — generated on mount, linked to run_id when run starts
   const [actorSessions, setActorSessions] = useState<{ casualtyId: string; callsign: string; token: string }[]>([])
@@ -211,6 +215,7 @@ export function RunCommandCenter({
           lead_proctor_id: userId,
           status: "active",
           started_at: new Date().toISOString(),
+          target_duration_minutes: scenario.evac_delay_minutes ?? null,
         })
         .select("id, status, clock_seconds, started_at")
         .single()
@@ -346,6 +351,23 @@ export function RunCommandCenter({
       setIsCopilotLoading(false)
       setCopilotQuery("")
     }
+  }
+
+  const handlePushVitals = async () => {
+    if (!selectedCasualtyId || !run) return
+    setIsPushingVitals(true)
+    const draft = vitalsDraft[selectedCasualtyId] ?? {}
+    const merged: VitalSigns = { ...casualtyVitals[selectedCasualtyId], ...draft }
+    setCasualtyVitals((prev) => ({ ...prev, [selectedCasualtyId]: merged }))
+    setVitalsDraft((prev) => ({ ...prev, [selectedCasualtyId]: {} }))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from("casualty_actor_sessions")
+      .update({ current_vitals: merged })
+      .eq("scenario_id", scenario.id)
+      .eq("casualty_id", selectedCasualtyId)
+    setIsPushingVitals(false)
+    toast.success("Vitals pushed to actor screen")
   }
 
   const getVitalStatus = (key: string, value: number): "normal" | "abnormal" | "critical" => {
@@ -607,6 +629,55 @@ export function RunCommandCenter({
                       </div>
                     )
                   })}
+                </div>
+              )}
+
+              {/* Vitals override — push live changes to actor screen */}
+              {run && currentVitals && selectedCasualtyId && (
+                <div className="px-4 py-2.5 border-b border-[#1e2330] bg-[#070809] shrink-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[9px] font-semibold text-[#4a5370] uppercase tracking-wider shrink-0">Override →</span>
+                    {(["hr", "rr", "sbp", "spo2"] as const).map((key) => {
+                      const labels: Record<string, string> = { hr: "HR", rr: "RR", sbp: "SBP", spo2: "SpO₂" }
+                      const val = (vitalsDraft[selectedCasualtyId]?.[key] ?? currentVitals[key]) as number
+                      return (
+                        <div key={key} className="flex items-center gap-1">
+                          <span className="text-[9px] text-[#3e465e] uppercase">{labels[key]}</span>
+                          <input
+                            type="number"
+                            value={val}
+                            onChange={(e) => setVitalsDraft((prev) => ({
+                              ...prev,
+                              [selectedCasualtyId]: { ...prev[selectedCasualtyId], [key]: Number(e.target.value) },
+                            }))}
+                            className="w-14 text-xs font-mono bg-[#0f1117] border border-[#2d3347] rounded px-1.5 py-0.5 text-[#f0f4ff] focus:border-blue-600 focus:outline-none"
+                          />
+                        </div>
+                      )
+                    })}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] text-[#3e465e] uppercase">AVPU</span>
+                      <select
+                        value={vitalsDraft[selectedCasualtyId]?.avpu ?? currentVitals.avpu}
+                        onChange={(e) => setVitalsDraft((prev) => ({
+                          ...prev,
+                          [selectedCasualtyId]: { ...prev[selectedCasualtyId], avpu: e.target.value },
+                        }))}
+                        className="text-xs bg-[#0f1117] border border-[#2d3347] rounded px-1.5 py-0.5 text-[#f0f4ff] focus:border-blue-600 focus:outline-none"
+                      >
+                        {["A", "V", "P", "U"].map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={handlePushVitals}
+                      loading={isPushingVitals}
+                      className="ml-auto bg-blue-700 hover:bg-blue-600 border-blue-600/30 text-xs"
+                      leftIcon={<Send className="h-3 w-3" />}
+                    >
+                      Push to Actor
+                    </Button>
+                  </div>
                 </div>
               )}
 

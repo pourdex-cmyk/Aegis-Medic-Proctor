@@ -18,7 +18,7 @@ export default async function RunPage({ params }: Props) {
   const [{ data: scenarioRaw }, { data: casualtiesRaw }, { data: profile }, { data: member }] = await Promise.all([
     supabase
       .from("scenarios")
-      .select("id, title, environment, complexity, doctrine_pack_id")
+      .select("id, title, environment, complexity, doctrine_pack_id, evac_delay_minutes")
       .eq("id", id)
       .single(),
     supabase
@@ -42,7 +42,7 @@ export default async function RunPage({ params }: Props) {
     .limit(1)
     .single()
 
-  type ScenarioRow = { id: string; title: string; environment: string; complexity: string; doctrine_packs?: { name: string } | null }
+  type ScenarioRow = { id: string; title: string; environment: string; complexity: string; evac_delay_minutes: number; doctrine_packs?: { name: string } | null }
   type CasualtyProfileRow = {
     id: string; callsign: string; display_label: string; mechanism_of_injury: string;
     visible_injuries: Array<{ type: string; location: string; severity: string; laterality?: string | null }>;

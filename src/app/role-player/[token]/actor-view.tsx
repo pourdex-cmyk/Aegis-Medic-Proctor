@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Volume2, VolumeX, Wifi, WifiOff, Mic, AlertTriangle, RefreshCw } from "lucide-react"
 import { cn, formatDuration } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
 
 interface VitalSigns {
   hr: number; rr: number; sbp: number; spo2: number; avpu: string; temp?: number
@@ -28,9 +29,15 @@ interface Casualty {
 }
 
 interface Run {
-  id: string
+  id: string | null
   status: string
   clock_seconds: number
+  target_duration_minutes?: number | null
+}
+
+interface ActorSession {
+  current_vitals: VitalSigns | null
+  proctor_note: string | null
 }
 
 type RunStatus = "standby" | "active" | "paused" | "endex" | "loading" | "error"
@@ -56,6 +63,8 @@ function getRunStatus(status: string): RunStatus {
 export function ActorView({ token }: { token: string }) {
   const [run, setRun] = useState<Run | null>(null)
   const [casualty, setCasualty] = useState<Casualty | null>(null)
+  const [liveVitals, setLiveVitals] = useState<VitalSigns | null>(null)
+  const [proctorNote, setProctorNote] = useState<string | null>(null)
   const [viewStatus, setViewStatus] = useState<RunStatus>("loading")
   const [errorMsg, setErrorMsg] = useState("")
   const [muted, setMuted] = useState(false)
@@ -67,10 +76,15 @@ export function ActorView({ token }: { token: string }) {
   const clockRef = useRef<NodeJS.Timeout | null>(null)
   const pollRef = useRef<NodeJS.Timeout | null>(null)
   const wakeLockRef = useRef<WakeLockSentinel | null>(null)
+  const fiveMinWarnedRef = useRef(false)
+  const mutedRef = useRef(false)
+
+  // Keep mutedRef in sync so speak() inside realtime callback always has current value
+  useEffect(() => { mutedRef.current = muted }, [muted])
 
   // ── TTS ──────────────────────────────────────────────────────────────────
   const speak = useCallback((text: string, interrupt = false) => {
-    if (muted || typeof window === "undefined" || !("speechSynthesis" in window)) return
+    if (mutedRef.current || typeof window === "undefined" || !("speechSynthesis" in window)) return
     if (interrupt) window.speechSynthesis.cancel()
     const utt = new SpeechSynthesisUtterance(text)
     utt.rate = 0.82
@@ -80,7 +94,7 @@ export function ActorView({ token }: { token: string }) {
     utt.onend = () => setTtsPlaying(false)
     utt.onerror = () => setTtsPlaying(false)
     window.speechSynthesis.speak(utt)
-  }, [muted])
+  }, [])
 
   const speakComplaint = useCallback(() => {
     if (!casualty?.audio_profile?.primary_complaint) return
@@ -108,18 +122,32 @@ export function ActorView({ token }: { token: string }) {
         return
       }
 
-      const data: { run: Run; casualty: Casualty } = await res.json()
+      const data: { run: Run; casualty: Casualty; session: ActorSession } = await res.json()
       const newStatus = data.run.status
       const prev = prevRunStatus.current
 
-      // Announce transitions
+      // Announce phase transitions
       if (prev !== null && prev !== newStatus) {
         if (newStatus === "active") {
-          speak("Scenario is now active. Get into character.", true)
+          // Full situational brief on scenario start
+          const inj = data.casualty.visible_injuries
+            .map((i) => `${i.severity} ${i.type} to the ${i.location}`)
+            .join(", ")
+          const complaint = data.casualty.audio_profile?.primary_complaint ?? ""
+          const parts = [
+            `${data.casualty.callsign}. Scenario is now active. Get into character.`,
+            `Your mechanism of injury: ${data.casualty.mechanism_of_injury}.`,
+            inj ? `You have the following visible wounds: ${inj}.` : "",
+            complaint ? `Your complaint to say to medics: ${complaint}.` : "",
+            `Act with a pain level of ${data.casualty.pain_level} out of 10.`,
+            data.casualty.airway_status !== "patent"
+              ? `Your airway is ${data.casualty.airway_status.replace(/_/g, " ")}.`
+              : "",
+          ].filter(Boolean).join(" ")
+          setTimeout(() => speak(parts, true), 300)
         } else if (newStatus === "paused") {
           speak("Scenario paused. Hold your position.", true)
         } else if (newStatus === "completed") {
-          // Repeat ENDEX for clarity
           setTimeout(() => speak("ENDEX. ENDEX. The scenario is complete. Say ENDEX to the medics now.", true), 300)
         }
       }
@@ -128,17 +156,50 @@ export function ActorView({ token }: { token: string }) {
       setRun(data.run)
       setCasualty(data.casualty)
       setViewStatus(getRunStatus(newStatus))
+
+      // Update live vitals and proctor note from session
+      if (data.session?.current_vitals) setLiveVitals(data.session.current_vitals)
+      else setLiveVitals(null)
+      setProctorNote(data.session?.proctor_note ?? null)
     } catch {
       setConnected(false)
     }
   }, [token, speak])
 
-  // Initial load + polling every 5 s
+  // Initial load + polling every 3 s
   useEffect(() => {
     fetchData()
-    pollRef.current = setInterval(fetchData, 5000)
+    pollRef.current = setInterval(fetchData, 3000)
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [fetchData])
+
+  // ── Supabase Realtime — instant vitals + note updates ────────────────────
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`actor-session-${token}`)
+      .on(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        "postgres_changes" as any,
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "casualty_actor_sessions",
+          filter: `token=eq.${token}`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          const row = payload.new as { current_vitals?: VitalSigns | null; proctor_note?: string | null }
+          if (row.current_vitals) {
+            setLiveVitals(row.current_vitals)
+            speak("Vitals updated by proctor.", false)
+          }
+          if (row.proctor_note !== undefined) setProctorNote(row.proctor_note ?? null)
+        }
+      )
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [token, speak])
 
   // ── Clock ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -149,6 +210,18 @@ export function ActorView({ token }: { token: string }) {
     }
     return () => { if (clockRef.current) clearInterval(clockRef.current) }
   }, [run?.status, run?.clock_seconds])
+
+  // ── 5-minute warning ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!run?.target_duration_minutes || viewStatus !== "active") return
+    const targetSec = run.target_duration_minutes * 60
+    const remaining = targetSec - clockSeconds
+    if (remaining <= 300 && remaining > 295 && !fiveMinWarnedRef.current) {
+      fiveMinWarnedRef.current = true
+      speak("Warning. Five minutes remaining in this scenario.", false)
+    }
+    if (remaining > 300) fiveMinWarnedRef.current = false
+  }, [clockSeconds, run?.target_duration_minutes, viewStatus, speak])
 
   // ── Wake Lock (keep screen on) ───────────────────────────────────────────
   useEffect(() => {
@@ -164,6 +237,8 @@ export function ActorView({ token }: { token: string }) {
   }, [])
 
   const triage = casualty ? (TRIAGE_CONFIG[casualty.triage_category] ?? TRIAGE_CONFIG.T3) : null
+  const vitals = liveVitals ?? casualty?.baseline_vitals ?? null
+  const vitalsLive = !!liveVitals
 
   // ── ENDEX overlay ────────────────────────────────────────────────────────
   if (viewStatus === "endex") {
@@ -222,9 +297,8 @@ export function ActorView({ token }: { token: string }) {
     )
   }
 
-  if (!casualty) return null
+  if (!casualty || !vitals) return null
 
-  const vitals = casualty.baseline_vitals
   const painColor = casualty.pain_level >= 8 ? "text-red-400" : casualty.pain_level >= 5 ? "text-amber-400" : "text-green-400"
 
   return (
@@ -250,10 +324,20 @@ export function ActorView({ token }: { token: string }) {
               <span className="font-mono text-sm font-bold text-red-400">
                 {formatDuration(clockSeconds)}
               </span>
+              {run?.target_duration_minutes && (
+                <span className="text-[10px] text-[#4a5370]">
+                  / {run.target_duration_minutes}m
+                </span>
+              )}
             </div>
           )}
           <button
-            onClick={() => { setMuted((m) => !m); if (!muted) window.speechSynthesis?.cancel() }}
+            onClick={() => {
+              const next = !muted
+              setMuted(next)
+              mutedRef.current = next
+              if (next) window.speechSynthesis?.cancel()
+            }}
             className="p-1.5"
           >
             {muted
@@ -297,6 +381,21 @@ export function ActorView({ token }: { token: string }) {
           >
             <div className="h-2 w-2 rounded-full bg-amber-400" />
             <span className="text-sm font-bold text-amber-400 tracking-widest uppercase">Paused — Hold position</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Proctor note (if set) ────────────────────────────────────────── */}
+      <AnimatePresence>
+        {proctorNote && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-5 py-3 bg-amber-950/40 border-b border-amber-800/40"
+          >
+            <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">Proctor Note</p>
+            <p className="text-sm text-amber-200">{proctorNote}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -423,9 +522,22 @@ export function ActorView({ token }: { token: string }) {
           </div>
         </div>
 
-        {/* Vitals reference */}
+        {/* Live Vitals — show to treater */}
         <div className="rounded-2xl border border-[#1e2330] bg-[#0a0c10] p-5">
-          <p className="text-xs font-black text-[#6b7594] uppercase tracking-wider mb-3">Baseline Vitals (Reference)</p>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-black text-[#6b7594] uppercase tracking-wider">
+                {vitalsLive ? "Live Vitals" : "Baseline Vitals"}
+              </p>
+              {vitalsLive && viewStatus === "active" && (
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
+                  <span className="text-[9px] text-green-400 font-semibold uppercase tracking-wider">Live</span>
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-[#4a5370]">Show to treater</p>
+          </div>
           <div className="grid grid-cols-4 gap-2">
             {[
               { label: "HR", value: vitals.hr, unit: "bpm", crit: vitals.hr > 130 || vitals.hr < 50 },
@@ -444,6 +556,18 @@ export function ActorView({ token }: { token: string }) {
                 {v.unit && <p className="text-[9px] text-[#3e465e]">{v.unit}</p>}
               </div>
             ))}
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="rounded-xl border border-[#1e2330] bg-[#060708] px-3 py-2">
+              <p className="text-[9px] text-[#3e465e] uppercase mb-0.5">AVPU</p>
+              <p className="text-base font-black font-mono text-[#f0f4ff]">{vitals.avpu}</p>
+            </div>
+            {vitals.temp && (
+              <div className="rounded-xl border border-[#1e2330] bg-[#060708] px-3 py-2">
+                <p className="text-[9px] text-[#3e465e] uppercase mb-0.5">Temp</p>
+                <p className="text-base font-black font-mono text-[#f0f4ff]">{vitals.temp}°F</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
