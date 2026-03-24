@@ -103,7 +103,7 @@ export function RunCommandCenter({
 
   const selectedCasualty = casualties.find((c) => c.id === selectedCasualtyId)
 
-  // Actor session codes (generated when run starts)
+  // Actor session codes — generated on mount, linked to run_id when run starts
   const [actorSessions, setActorSessions] = useState<{ casualtyId: string; callsign: string; token: string }[]>([])
   const [showActorCodes, setShowActorCodes] = useState(false)
 
@@ -111,6 +111,50 @@ export function RunCommandCenter({
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
   }
+
+  // Generate actor tokens on page load so codes are ready before run starts
+  useEffect(() => {
+    if (casualties.length === 0) return
+    const init = async () => {
+      // Check if sessions already exist for this scenario
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existing } = await (supabase as any)
+        .from("casualty_actor_sessions")
+        .select("casualty_id, token")
+        .eq("scenario_id", scenario.id) as { data: { casualty_id: string; token: string }[] | null }
+
+      if (existing && existing.length > 0) {
+        setActorSessions(
+          existing.map((s) => ({
+            casualtyId: s.casualty_id,
+            callsign: casualties.find((c) => c.id === s.casualty_id)?.callsign ?? "Unknown",
+            token: s.token,
+          }))
+        )
+        return
+      }
+
+      // Insert new tokens linked to scenario (run_id populated when run starts)
+      const sessions = casualties.map((c) => ({
+        scenario_id: scenario.id,
+        casualty_id: c.id,
+        token: generateToken(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      }))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from("casualty_actor_sessions")
+        .insert(sessions)
+
+      if (!error) {
+        setActorSessions(
+          casualties.map((c, i) => ({ casualtyId: c.id, callsign: c.callsign, token: sessions[i].token }))
+        )
+      }
+    }
+    init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenario.id])
   const currentVitals = selectedCasualtyId ? casualtyVitals[selectedCasualtyId] : null
 
   // Clock
@@ -197,26 +241,12 @@ export function RunCommandCenter({
         }))
       )
 
-      // Generate patient actor tokens
-      const sessions = casualties.map((c) => ({
-        run_id: runData.id,
-        casualty_id: c.id,
-        token: generateToken(),
-        expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(),
-      }))
+      // Link pre-generated actor tokens to this run (tokens already exist from page load)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: sessionError } = await (supabase as any)
+      await (supabase as any)
         .from("casualty_actor_sessions")
-        .insert(sessions)
-      if (!sessionError) {
-        const actorData = casualties.map((c, i) => ({
-          casualtyId: c.id,
-          callsign: c.callsign,
-          token: sessions[i].token,
-        }))
-        setActorSessions(actorData)
-        setShowActorCodes(true)
-      }
+        .update({ run_id: runData.id })
+        .eq("scenario_id", scenario.id)
 
       setRun(runData as unknown as ScenarioRun)
       setIsRunning(true)
@@ -437,6 +467,45 @@ export function RunCommandCenter({
           )}
         </div>
       </div>
+
+      {/* ── Patient actor codes strip (pre-run standby) ──────────────── */}
+      {actorSessions.length > 0 && (
+        <div className="flex items-center gap-3 px-5 py-2.5 border-b border-[#1e2330] bg-[#070809] shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Smartphone className="h-3 w-3 text-blue-400" />
+            <span className="text-[10px] font-semibold text-[#4a5370] uppercase tracking-wider">Patient Codes</span>
+          </div>
+          <div className="flex items-center gap-2 flex-1 overflow-x-auto">
+            {actorSessions.map((s) => {
+              const url = typeof window !== "undefined"
+                ? `${window.location.origin}/role-player/${s.token}`
+                : `/role-player/${s.token}`
+              return (
+                <div
+                  key={s.casualtyId}
+                  className="flex items-center gap-2 rounded-lg border border-[#2d3347] bg-[#0f1117] px-3 py-1 shrink-0"
+                >
+                  <span className="text-[10px] text-[#4a5370] font-semibold">{s.callsign}</span>
+                  <span className="font-mono text-sm font-black text-blue-400 tracking-[0.2em]">{s.token}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(url)
+                      toast.success(`Link copied for ${s.callsign}`)
+                    }}
+                    className="text-[#3e465e] hover:text-[#9daabf] transition-colors"
+                    title="Copy actor link"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+          <span className="text-[10px] text-[#3e465e] shrink-0 hidden sm:block">
+            /role-player/[CODE]
+          </span>
+        </div>
+      )}
 
       {/* Main layout: 3-column */}
       <div className="flex-1 flex overflow-hidden">
@@ -772,7 +841,7 @@ export function RunCommandCenter({
         </div>
       </div>
 
-      {/* ── Patient Actor Codes modal ────────────────────────────────── */}
+      {/* ── Patient Actor Codes expanded modal (for zoomed view) ──────── */}
       <Dialog open={showActorCodes} onOpenChange={setShowActorCodes}>
         <DialogContent size="sm">
           <DialogHeader>
@@ -783,37 +852,27 @@ export function RunCommandCenter({
           </DialogHeader>
           <div className="space-y-3 py-1">
             <p className="text-xs text-[#6b7594]">
-              Give each actor their code. They open{" "}
+              Each actor opens{" "}
               <span className="font-mono text-blue-400">
                 {typeof window !== "undefined" ? window.location.origin : ""}/role-player
               </span>{" "}
-              on their phone and enter the code below.
+              and enters their code. Their phone stays in STANDBY until you hit Start Run.
             </p>
             {actorSessions.map((s) => {
               const url = typeof window !== "undefined"
                 ? `${window.location.origin}/role-player/${s.token}`
                 : `/role-player/${s.token}`
               return (
-                <div
-                  key={s.casualtyId}
-                  className="flex items-center gap-4 rounded-xl border border-[#2d3347] bg-[#0f1117] px-4 py-3"
-                >
+                <div key={s.casualtyId} className="flex items-center gap-4 rounded-xl border border-[#2d3347] bg-[#0f1117] px-4 py-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-[#4a5370] font-semibold uppercase tracking-wider mb-0.5">
-                      {s.callsign}
-                    </p>
-                    <p className="font-mono text-3xl font-black text-blue-400 tracking-[0.25em] leading-none">
-                      {s.token}
-                    </p>
+                    <p className="text-xs text-[#4a5370] font-semibold uppercase tracking-wider mb-0.5">{s.callsign}</p>
+                    <p className="font-mono text-3xl font-black text-blue-400 tracking-[0.25em] leading-none">{s.token}</p>
                   </div>
                   <Button
                     size="sm"
                     variant="secondary"
                     leftIcon={<Copy className="h-3.5 w-3.5" />}
-                    onClick={() => {
-                      navigator.clipboard.writeText(url)
-                      toast.success(`Link copied for ${s.callsign}`)
-                    }}
+                    onClick={() => { navigator.clipboard.writeText(url); toast.success(`Link copied for ${s.callsign}`) }}
                   >
                     Copy Link
                   </Button>
@@ -821,7 +880,7 @@ export function RunCommandCenter({
               )
             })}
             <p className="text-[11px] text-[#3e465e] pt-1">
-              Codes expire 12 hours after the run starts. Patients will see ENDEX automatically when you end the run.
+              Codes expire 24 hours from page load. Patients see ENDEX automatically when you end the run.
             </p>
           </div>
         </DialogContent>
