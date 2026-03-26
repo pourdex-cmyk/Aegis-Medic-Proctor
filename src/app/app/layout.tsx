@@ -3,7 +3,9 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import { ROUTES } from "@/lib/constants"
+import { isSubscriptionActive } from "@/lib/stripe"
 
 export const metadata: Metadata = {
   title: {
@@ -44,6 +46,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!member) {
     redirect(ROUTES.onboarding)
   }
+
+  // ── Subscription gate ────────────────────────────────────────────────────
+  const headersList = await headers()
+  const pathname = headersList.get("x-pathname") ?? ""
+
+  // Only check if NOT already on billing page (avoid redirect loop)
+  if (!pathname.startsWith("/app/billing")) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: org } = await (supabase as any)
+      .from("organizations")
+      .select("stripe_subscription_status")
+      .eq("id", member.org_id)
+      .single() as { data: { stripe_subscription_status: string | null } | null }
+
+    if (!isSubscriptionActive(org?.stripe_subscription_status)) {
+      redirect("/app/billing")
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────
 
   const orgName = member?.organizations?.name
 
