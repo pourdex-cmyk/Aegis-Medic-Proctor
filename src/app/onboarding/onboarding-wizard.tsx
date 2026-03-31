@@ -34,16 +34,16 @@ const ORG_TYPE_OPTIONS = [
   { value: "military", label: "Military Unit", icon: Shield, description: "TCCC/CLS training for combat units" },
   { value: "law_enforcement", label: "Law Enforcement", icon: Shield, description: "TEMS and tactical medical training" },
   { value: "ems", label: "EMS / Fire", icon: Flame, description: "Prehospital trauma and mass casualty" },
-  { value: "hospital", label: "Hospital / Medical", icon: Stethoscope, description: "Trauma team and ER simulation" },
-  { value: "academic", label: "Academic / Research", icon: Globe, description: "Medical education and simulation research" },
-  { value: "private", label: "Private / Corporate", icon: Building2, description: "Contractor and private security training" },
+  { value: "training_institution", label: "Hospital / Medical", icon: Stethoscope, description: "Trauma team and ER simulation" },
+  { value: "other", label: "Academic / Research", icon: Globe, description: "Medical education and simulation research" },
+  { value: "other", label: "Private / Corporate", icon: Building2, description: "Contractor and private security training" },
 ]
 
 const ROLE_OPTIONS = [
   { value: "org_admin", label: "Organization Admin", description: "Manage team, doctrine, and all settings" },
   { value: "lead_proctor", label: "Lead Proctor", description: "Run scenarios and grade performance" },
   { value: "doctrine_sme", label: "Doctrine SME", description: "Review and approve extracted doctrine rules" },
-  { value: "analyst", label: "Training Analyst", description: "View analytics and generate reports" },
+  { value: "evaluator", label: "Training Analyst", description: "View analytics and generate reports" },
 ]
 
 function StepIndicator({ currentStep }: { currentStep: Step }) {
@@ -109,6 +109,13 @@ export function OnboardingWizard({ userId, userEmail, displayName, subscriptionS
     }
     startTransition(async () => {
       try {
+        // Ensure profile exists — FK constraint on organization_members requires it
+        const name = displayName || userEmail.split("@")[0]
+        await supabase.from("profiles").upsert(
+          { id: userId, email: userEmail, display_name: name },
+          { onConflict: "id" }
+        )
+
         // Create org
         const { data: org, error: orgError } = await supabase
           .from("organizations")
@@ -120,27 +127,37 @@ export function OnboardingWizard({ userId, userEmail, displayName, subscriptionS
           .select("id")
           .single()
 
-        if (orgError) throw orgError
+        if (orgError) {
+          toast.error("Failed to create organization", {
+            description: (orgError as { message?: string }).message ?? String(orgError),
+          })
+          return
+        }
 
-        // Create membership (display_name is NOT NULL in schema)
+        // Create membership
         const { error: memberError } = await supabase
           .from("organization_members")
           .insert({
             org_id: org.id,
             user_id: userId,
             role: myRole,
-            display_name: displayName,
+            display_name: name,
             is_active: true,
             joined_at: new Date().toISOString(),
           })
 
-        if (memberError) throw memberError
+        if (memberError) {
+          toast.error("Failed to create membership", {
+            description: (memberError as { message?: string }).message ?? String(memberError),
+          })
+          return
+        }
 
         setCreatedOrgId(org.id)
         setStep("doctrine")
       } catch (err) {
         toast.error("Failed to create organization", {
-          description: err instanceof Error ? err.message : "Unknown error",
+          description: (err as { message?: string })?.message ?? String(err),
         })
       }
     })
