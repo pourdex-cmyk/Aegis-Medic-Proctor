@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { headers } from "next/headers"
 import { ROUTES } from "@/lib/constants"
-import { isSubscriptionActive } from "@/lib/stripe"
+import { isSubscriptionActive, isStripeConfigured } from "@/lib/stripe"
 
 export const metadata: Metadata = {
   title: {
@@ -51,8 +51,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const headersList = await headers()
   const pathname = headersList.get("x-pathname") ?? ""
 
-  // Only check if NOT already on billing page (avoid redirect loop)
-  if (!pathname.startsWith("/app/billing")) {
+  // Only enforce when Stripe is configured and not already on billing page
+  if (isStripeConfigured() && !pathname.startsWith("/app/billing")) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: org } = await (supabase as any)
       .from("organizations")

@@ -1,10 +1,21 @@
 import Stripe from "stripe"
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  apiVersion: "2024-06-20" as any,
-  typescript: true,
-})
+// Lazy singleton — never crashes at import time if the key is missing.
+// Only throws when a Stripe API call is actually attempted.
+let _stripe: Stripe | null = null
+
+export function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY
+    if (!key) throw new Error("STRIPE_SECRET_KEY is not set")
+    _stripe = new Stripe(key, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      apiVersion: "2024-06-20" as any,
+      typescript: true,
+    })
+  }
+  return _stripe
+}
 
 export const PLANS = {
   professional: {
@@ -54,4 +65,9 @@ export const PRICE_TO_TIER: Record<string, string> = {
 
 export function isSubscriptionActive(status: string | null | undefined): boolean {
   return status === "active" || status === "trialing"
+}
+
+/** True only when Stripe is fully configured in this environment */
+export function isStripeConfigured(): boolean {
+  return !!process.env.STRIPE_SECRET_KEY
 }

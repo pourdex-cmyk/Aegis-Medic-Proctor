@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { stripe, PRICE_TO_TIER } from "@/lib/stripe"
+import { getStripe, PRICE_TO_TIER } from "@/lib/stripe"
 import { createServiceClient } from "@/lib/supabase/server"
 import type Stripe from "stripe"
 
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
+    event = getStripe().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
   } catch {
     return NextResponse.json({ error: "Invalid webhook signature" }, { status: 400 })
   }
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         const orgId = session.metadata?.org_id
         if (!orgId || !session.subscription) break
 
-        const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
+        const subscription = await getStripe().subscriptions.retrieve(session.subscription as string)
         const priceId = subscription.items.data[0]?.price.id ?? ""
         const planTier = PRICE_TO_TIER[priceId] ?? "professional"
 
