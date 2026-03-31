@@ -109,51 +109,26 @@ export function OnboardingWizard({ userId, userEmail, displayName, subscriptionS
     }
     startTransition(async () => {
       try {
-        // Ensure profile exists — FK constraint on organization_members requires it
-        const name = displayName || userEmail.split("@")[0]
-        await supabase.from("profiles").upsert(
-          { id: userId, email: userEmail, display_name: name },
-          { onConflict: "id" }
-        )
-
-        // Create org
-        const { data: org, error: orgError } = await supabase
-          .from("organizations")
-          .insert({
-            name: orgName.trim(),
-            slug: orgSlug || slugify(orgName),
-            type: orgType,
-          })
-          .select("id")
-          .single()
-
-        if (orgError) {
-          toast.error("Failed to create organization", {
-            description: (orgError as { message?: string }).message ?? String(orgError),
-          })
-          return
-        }
-
-        // Create membership
-        const { error: memberError } = await supabase
-          .from("organization_members")
-          .insert({
-            org_id: org.id,
-            user_id: userId,
+        const res = await fetch("/api/onboarding/create-org", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orgName: orgName.trim(),
+            orgSlug: orgSlug || slugify(orgName),
+            orgType,
             role: myRole,
-            display_name: name,
-            is_active: true,
-            joined_at: new Date().toISOString(),
-          })
+            displayName,
+          }),
+        })
 
-        if (memberError) {
-          toast.error("Failed to create membership", {
-            description: (memberError as { message?: string }).message ?? String(memberError),
-          })
+        const data = await res.json()
+
+        if (!res.ok) {
+          toast.error("Failed to create organization", { description: data.error })
           return
         }
 
-        setCreatedOrgId(org.id)
+        setCreatedOrgId(data.orgId)
         setStep("doctrine")
       } catch (err) {
         toast.error("Failed to create organization", {
