@@ -51,8 +51,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const headersList = await headers()
   const pathname = headersList.get("x-pathname") ?? ""
 
-  // Only enforce when Stripe is configured and not already on billing page
-  if (isStripeConfigured() && !pathname.startsWith("/app/billing")) {
+  // Owner account is always exempt from subscription enforcement
+  const EXEMPT_EMAILS = ["mitchellskarangekis@gmail.com"]
+  const userEmail = profile?.email ?? user.email ?? ""
+  const isExempt = EXEMPT_EMAILS.includes(userEmail)
+
+  // Only enforce when Stripe is configured, user is not exempt, and not already on billing page
+  if (isStripeConfigured() && !isExempt && !pathname.startsWith("/app/billing")) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: org } = await (supabase as any)
       .from("organizations")
