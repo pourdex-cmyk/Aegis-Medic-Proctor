@@ -117,9 +117,13 @@ export default function SignUpPage() {
 
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[#f0f4ff] tracking-tight mb-2">Create your account</h1>
-          <p className="text-sm text-[#6b7594]">
+          <p className="text-sm text-[#6b7594] mb-3">
             Start building doctrine-aligned training scenarios
           </p>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-green-700/40 bg-green-950/20 px-3 py-1">
+            <div className="h-1.5 w-1.5 rounded-full bg-green-400" />
+            <span className="text-[11px] font-semibold text-green-300">14-day free trial included</span>
+          </div>
         </div>
 
         {error && (

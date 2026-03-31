@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { priceId } = await req.json() as { priceId: string }
+  const { priceId, returnPath } = await req.json() as { priceId: string; returnPath?: string }
   if (!priceId) return NextResponse.json({ error: "priceId required" }, { status: 400 })
 
   // Get org + existing Stripe customer
@@ -69,8 +69,12 @@ export async function POST(req: NextRequest) {
     },
     metadata: { org_id: org.id },
     allow_promotion_codes: true,
-    success_url: `${baseUrl}/app/billing?success=true`,
-    cancel_url: `${baseUrl}/app/billing?canceled=true`,
+    success_url: returnPath
+      ? `${baseUrl}${returnPath}?success=true`
+      : `${baseUrl}/app/billing?success=true`,
+    cancel_url: returnPath
+      ? `${baseUrl}${returnPath}?canceled=true`
+      : `${baseUrl}/app/billing?canceled=true`,
   })
 
   return NextResponse.json({ url: session.url })

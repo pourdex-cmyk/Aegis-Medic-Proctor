@@ -6,13 +6,18 @@ import { ROUTES } from "@/lib/constants"
 
 export const metadata: Metadata = { title: "Set Up Your Organization" }
 
-export default async function OnboardingPage() {
+interface Props {
+  searchParams: Promise<{ success?: string; canceled?: string }>
+}
+
+export default async function OnboardingPage({ searchParams }: Props) {
+  const { success, canceled } = await searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect(ROUTES.signIn)
 
-  // If already onboarded (has org membership), skip
+  // If already onboarded (has org membership), only skip if NOT returning from Stripe
   const { data: member } = await supabase
     .from("organization_members")
     .select("id")
@@ -21,7 +26,7 @@ export default async function OnboardingPage() {
     .limit(1)
     .single()
 
-  if (member) redirect(ROUTES.dashboard)
+  if (member && success !== "true") redirect(ROUTES.dashboard)
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -34,6 +39,8 @@ export default async function OnboardingPage() {
       userId={user.id}
       userEmail={profile?.email ?? user.email ?? ""}
       displayName={profile?.display_name ?? ""}
+      subscriptionSuccess={success === "true"}
+      subscriptionCanceled={canceled === "true"}
     />
   )
 }

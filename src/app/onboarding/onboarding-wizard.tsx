@@ -4,16 +4,17 @@ import React, { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-  Building2, Users, BookOpen, ChevronRight, ChevronLeft,
-  Check, Shield, Stethoscope, Flame, AlertCircle, Globe,
-  Loader2, Plus, UserPlus, Upload, Sparkles, ArrowRight
+  Building2, BookOpen, ChevronRight, ChevronLeft,
+  Check, Shield, Stethoscope, Flame, Globe,
+  Plus, UserPlus, Upload, Sparkles, ArrowRight,
+  CreditCard, Lock, Zap, CheckCircle2, XCircle,
 } from "lucide-react"
+import { PLANS } from "@/lib/stripe"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { cn, generateId } from "@/lib/utils"
-import { ROUTES, ORG_TYPES } from "@/lib/constants"
+import { ROUTES } from "@/lib/constants"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 
@@ -21,11 +22,13 @@ interface OnboardingWizardProps {
   userId: string
   userEmail: string
   displayName: string
+  subscriptionSuccess?: boolean
+  subscriptionCanceled?: boolean
 }
 
-type Step = "welcome" | "org" | "role" | "doctrine" | "invite" | "done"
+type Step = "welcome" | "org" | "role" | "doctrine" | "invite" | "plan" | "done"
 
-const STEPS: Step[] = ["welcome", "org", "role", "doctrine", "invite", "done"]
+const STEPS: Step[] = ["welcome", "org", "role", "doctrine", "invite", "plan", "done"]
 
 const ORG_TYPE_OPTIONS = [
   { value: "military", label: "Military Unit", icon: Shield, description: "TCCC/CLS training for combat units" },
@@ -76,11 +79,12 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
   )
 }
 
-export function OnboardingWizard({ userId, userEmail, displayName }: OnboardingWizardProps) {
+export function OnboardingWizard({ userId, userEmail, displayName, subscriptionSuccess, subscriptionCanceled }: OnboardingWizardProps) {
   const router = useRouter()
   const supabase = createClient()
   const [isPending, startTransition] = useTransition()
-  const [step, setStep] = useState<Step>("welcome")
+  const [step, setStep] = useState<Step>(subscriptionSuccess ? "done" : "welcome")
+  const [subscribeLoading, setSubscribeLoading] = useState<string | null>(null)
 
   // Form state
   const [orgName, setOrgName] = useState("")
@@ -159,8 +163,33 @@ export function OnboardingWizard({ userId, userEmail, displayName }: OnboardingW
         }
         toast.success(`${emails.length} invite${emails.length > 1 ? "s" : ""} sent`)
       }
-      router.push(ROUTES.dashboard)
+      setStep("plan")
     })
+  }
+
+  const handleSubscribe = async (priceId: string, planKey: string) => {
+    if (!priceId) {
+      toast.error("Plan not configured — contact support")
+      return
+    }
+    setSubscribeLoading(planKey)
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceId, returnPath: "/onboarding" }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        toast.error(data.error ?? "Failed to start checkout")
+      }
+    } catch {
+      toast.error("Something went wrong — please try again")
+    } finally {
+      setSubscribeLoading(null)
+    }
   }
 
   const slideVariants = {
@@ -443,6 +472,102 @@ export function OnboardingWizard({ userId, userEmail, displayName }: OnboardingW
             </motion.div>
           )}
 
+          {/* Plan selection */}
+          {step === "plan" && (
+            <motion.div
+              key="plan"
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+              className="space-y-5"
+            >
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-[#f0f4ff] mb-1">Start your free trial</h2>
+                <p className="text-sm text-[#6b7594]">
+                  14 days free — no charge today. Full platform access immediately.
+                </p>
+              </div>
+
+              {subscriptionCanceled && (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-700/40 bg-amber-950/20 px-4 py-3">
+                  <XCircle className="h-4 w-4 text-amber-400 shrink-0" />
+                  <p className="text-xs text-amber-300">Checkout was canceled — choose a plan below to continue.</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-3">
+                {(Object.entries(PLANS) as [string, typeof PLANS[keyof typeof PLANS]][]).map(([key, plan]) => {
+                  const isPro = key === "professional"
+                  const isLoading = subscribeLoading === key
+                  return (
+                    <div
+                      key={key}
+                      className={cn(
+                        "relative rounded-xl border p-5",
+                        isPro ? "border-blue-700/60 bg-blue-950/10" : "border-[#2d3347] bg-[#0d0f14]"
+                      )}
+                    >
+                      {isPro && (
+                        <div className="absolute -top-2.5 left-5">
+                          <span className="text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white px-2.5 py-0.5 rounded-full">
+                            Most Popular
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            {isPro
+                              ? <Zap className="h-3.5 w-3.5 text-blue-400" />
+                              : <Shield className="h-3.5 w-3.5 text-purple-400" />
+                            }
+                            <span className="text-sm font-black text-[#f0f4ff]">{plan.name}</span>
+                            <span className="text-lg font-black text-[#f0f4ff] ml-auto">${plan.price}<span className="text-xs font-normal text-[#4a5370]">/mo</span></span>
+                          </div>
+                          <p className="text-xs text-[#6b7594] mb-3">{plan.description}</p>
+                          <ul className="grid grid-cols-2 gap-x-3 gap-y-1">
+                            {plan.features.slice(0, 4).map((f) => (
+                              <li key={f} className="flex items-center gap-1.5 text-[11px] text-[#9daabf]">
+                                <Check className={cn("h-3 w-3 shrink-0", isPro ? "text-blue-400" : "text-purple-400")} />
+                                {f}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleSubscribe(plan.priceId, key)}
+                        disabled={!!subscribeLoading}
+                        className={cn(
+                          "mt-4 w-full py-2.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50",
+                          isPro
+                            ? "bg-blue-600 hover:bg-blue-500 text-white"
+                            : "bg-[#1e2330] hover:bg-[#2d3347] text-[#f0f4ff] border border-[#2d3347]"
+                        )}
+                      >
+                        {isLoading ? (
+                          <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <>
+                            <CreditCard className="h-4 w-4" />
+                            Start 14-Day Free Trial
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-[#3e465e]">
+                <Lock className="h-3 w-3" />
+                Secured by Stripe · Cancel anytime · No charge for 14 days
+              </div>
+            </motion.div>
+          )}
+
           {/* Done */}
           {step === "done" && (
             <motion.div
@@ -455,11 +580,14 @@ export function OnboardingWizard({ userId, userEmail, displayName }: OnboardingW
               className="text-center"
             >
               <div className="h-16 w-16 rounded-full bg-green-950/40 border border-green-700/40 flex items-center justify-center mx-auto mb-4">
-                <Check className="h-8 w-8 text-green-400" />
+                <CheckCircle2 className="h-8 w-8 text-green-400" />
               </div>
               <h2 className="text-2xl font-bold text-[#f0f4ff] mb-2">You're all set!</h2>
-              <p className="text-sm text-[#6b7594] mb-8 max-w-sm mx-auto">
-                Your organization is ready. Start by generating your first training scenario.
+              <p className="text-sm text-[#6b7594] mb-2 max-w-sm mx-auto">
+                Your subscription is active and your organization is ready.
+              </p>
+              <p className="text-xs text-[#4a5370] mb-8 max-w-sm mx-auto">
+                Your 14-day free trial has started. Start building your first training scenario.
               </p>
               <Button
                 size="lg"
